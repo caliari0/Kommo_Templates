@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kommo Templates Algorithm</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="kommo-ui">
+    <main class="container kommo-app">
+        <section id="loginPanel" class="login-shell">
+            <div class="login-column">
+                <img class="login-logo" src="/static/login-logo.png" alt="Kommo logo">
+                <section class="panel auth-panel">
+                    <h2>Login</h2>
+                    <form id="loginForm" class="auth-form">
+                        <label for="username">Username</label>
+                        <input id="username" name="username" type="text" autocomplete="username" required>
+
+                        <div class="auth-password-row">
+                            <label for="password">Password</label>
+                        </div>
+                        <div class="auth-password-input-wrap">
+                            <input id="password" name="password" type="password" autocomplete="current-password" required>
+                            <button
+                                id="toggleLoginPasswordButton"
+                                type="button"
+                                class="auth-password-eye-btn"
+                                aria-label="Show password"
+                                aria-pressed="false"
+                                title="Show password"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path d="M12 5C6.5 5 2 9 1 12c1 3 5.5 7 11 7s10-4 11-7c-1-3-5.5-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <button id="loginButton" type="submit">Sign in</button>
+                        <button id="openRegisterButton" type="button" class="secondary">Create account</button>
+                    </form>
+                    <p id="loginStatusMessage" class="status"></p>
+                </section>
+            </div>
+            <section class="panel news-panel">
+                <h2>Newsfeed/Brand Placement</h2>
+                <p>User account functionality is up! Please create your accounts. Thank you for the support!</p>
+            </section>
+        </section>
+
+        <section id="appPanel" class="app-shell hidden">
+        <aside class="kommo-sidebar-rail" aria-label="Workspace navigation">
+            <div class="kommo-rail-logo" aria-hidden="true"></div>
+            <nav id="kommoRailNav" class="kommo-rail-nav" aria-label="Main sections">
+                <button type="button" class="kommo-rail-btn" data-view-target="business-dashboard" data-rail-visible="manager,developer" title="Business dashboard" aria-label="Business dashboard">
+                    <svg class="kommo-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7 4h4v10h-4V11z"/></svg>
+                </button>
+                <button type="button" class="kommo-rail-btn" data-view-target="engineering-dashboard" data-rail-visible="developer" title="Engineering dashboard" aria-label="Engineering dashboard">
+                    <svg class="kommo-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a2 2 0 0 1 2 2v1.09a7.002 7.002 0 0 1 2.24 1.3l.77-.77a2 2 0 1 1 2.83 2.83l-.77.77A7.002 7.002 0 0 1 20.91 12H22a2 2 0 1 1 0 4h-1.09a7.002 7.002 0 0 1-1.3 2.24l.77.77a2 2 0 1 1-2.83 2.83l-.77-.77A7.002 7.002 0 0 1 14 20.91V22a2 2 0 1 1-4 0v-1.09a7.002 7.002 0 0 1-2.24-1.3l-.77.77a2 2 0 1 1-2.83-2.83l.77-.77A7.002 7.002 0 0 1 3.09 14H2a2 2 0 1 1 0-4h1.09a7.002 7.002 0 0 1 1.3-2.24l-.77-.77a2 2 0 1 1 2.83-2.83l.77.77A7.002 7.002 0 0 1 10 3.09V2a2 2 0 0 1 2-2Zm0 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
+                </button>
+                <button type="button" class="kommo-rail-btn" data-view-target="workspace" data-rail-visible="user,manager,developer" title="Workspace" aria-label="Workspace">
+                    <svg class="kommo-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6zm0 5h10v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+                </button>
+            </nav>
+        </aside>
+        <div class="kommo-main">
+        <header class="header kommo-topbar">
+            <div class="header-brand">
+                <img class="header-logo" src="/static/header-logo.png" alt="Brand logo">
+                <div>
+                <h1>Kommo Templates Algorithm</h1>
+                <p>CRUD for message templates (v3.1.2)</p>
+                </div>
+            </div>
+            <div class="header-links">
+                <div id="languageSwitcher" class="language-switcher" aria-label="Language selector">
+                    <button type="button" class="lang-button active" data-language="en">EN</button>
+                    <button type="button" class="lang-button" data-language="es">ES</button>
+                    <button type="button" class="lang-button" data-language="pt">PT</button>
+                </div>
+                <div id="recentChangesWrap" class="outdated-bell-wrap">
+                    <button id="recentChangesButton" type="button" class="secondary outdated-bell-button" aria-label="Recent template changes">
+                        Recent changes <span id="recentChangesCount" class="outdated-bell-count">0</span>
+                    </button>
+                    <div id="recentChangesPanel" class="outdated-panel hidden" aria-live="polite"></div>
+                </div>
+                <div id="outdatedBellWrap" class="outdated-bell-wrap hidden">
+                    <button id="outdatedBellButton" type="button" class="secondary outdated-bell-button" aria-label="Outdated reports">
+                        Reports <span id="outdatedBellCount" class="outdated-bell-count">0</span>
+                    </button>
+                    <div id="outdatedPanel" class="outdated-panel hidden" aria-live="polite"></div>
+                </div>
+                <span id="localTimeLabel" class="local-time-label" aria-live="polite"></span>
+                <span id="languageBadge" class="badge">EN</span>
+                <button id="logoutButton" type="button" class="secondary">Logout</button>
+            </div>
+        </header>
+        <section id="businessDashboardView" class="dashboard-view hidden" aria-live="polite">
+            <div class="dashboard-head">
+                <h2>Business Dashboard</h2>
+                <p>Operational outcomes, adoption, and content health for managers and developers.</p>
+            </div>
+            <div class="dashboard-grid">
+                <section class="panel dashboard-panel">
+                    <h3>User activity</h3>
+                    <div id="dashboardUserStats" class="dashboard-stats"></div>
+                </section>
+                <section class="panel dashboard-panel">
+                    <h3>Template usage</h3>
+                    <div id="dashboardTemplateStats" class="dashboard-stats"></div>
+                </section>
+                <section class="panel dashboard-panel">
+                    <h3>Requests per hour (24h)</h3>
+                    <div id="dashboardRequestsChart" class="dashboard-chart"></div>
+                </section>
+                <section class="panel dashboard-panel">
+                    <h3>Top active users (60m)</h3>
+                    <div id="dashboardTopUsers" class="metrics-endpoints"></div>
+                </section>
+                <section class="panel dashboard-panel">
+                    <h3>Top copied templates</h3>
+                    <div id="dashboardTopTemplates" class="metrics-endpoints"></div>
+                </section>
+                <section class="panel dashboard-panel">
+                    <h3>Usage by language</h3>
+                    <div id="dashboardLanguageUsage" class="metrics-endpoints"></div>
+                </section>
+                <section class="panel dashboard-panel">
+                    <h3>Role insights</h3>
+                    <div id="dashboardRoleInsights" class="metrics-endpoints"></div>
+                </section>
+            </div>
+        </section>
+
+        <section id="engineeringDashboardView" class="dashboard-view hidden" aria-live="polite">
+            <div class="dashboard-head">
+                <h2>Engineering Dashboard</h2>
+                <p>System performance, error telemetry, and endpoint diagnostics for developers.</p>
+            </div>
+            <div class="dashboard-grid engineering-grid">
+                <section class="panel dashboard-panel engineering-panel-main engineering-report-panel">
+                    <div class="panel-title-row">
+                        <h3>Live usage metrics and report</h3>
+                        <div class="metrics-actions">
+                            <button id="engineeringMetricsRefreshButton" type="button" class="secondary">Refresh</button>
+                            <button id="engineeringMetricsSummaryButton" type="button" class="secondary">Generate report</button>
+                        </div>
+                    </div>
+                    <pre id="engineeringMetricsSummaryText" class="metrics-summary-text engineering-report-box">Generate a report to view session-level endpoint usage.</pre>
+                    <div class="engineering-live-grid">
+                        <div>
+                            <h3 class="metrics-subtitle">Live summary cards</h3>
+                            <div id="engineeringLiveMetricsSummary" class="metrics-summary"></div>
+                        </div>
+                        <div>
+                            <h3 class="metrics-subtitle">Top Endpoints (Last 60m)</h3>
+                            <div id="engineeringLiveMetricsEndpoints" class="metrics-endpoints"></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="panel dashboard-panel engineering-panel-side engineering-subgrid-panel">
+                    <h3>Traffic and errors</h3>
+                    <div id="engineeringTrafficStats" class="dashboard-stats"></div>
+                    <div class="engineering-subgrid">
+                        <section class="engineering-subpanel">
+                            <h4>Latency percentiles (60m)</h4>
+                            <div id="engineeringLatencyStats" class="dashboard-stats engineering-mini-stats"></div>
+                        </section>
+                        <section class="engineering-subpanel">
+                            <h4>Status code distribution (60m)</h4>
+                            <div id="engineeringStatusCodes" class="metrics-endpoints engineering-mini-list"></div>
+                        </section>
+                        <section class="engineering-subpanel">
+                            <h4>Role traffic (60m)</h4>
+                            <div id="engineeringRoleTraffic" class="metrics-endpoints engineering-mini-list"></div>
+                        </section>
+                        <section class="engineering-subpanel">
+                            <h4>User accounts</h4>
+                            <div id="usersList" class="metrics-endpoints engineering-mini-list"></div>
+                        </section>
+                    </div>
+                </section>
+                <section class="panel dashboard-panel engineering-panel-wide">
+                    <h3>Slow endpoints (p95, 60m)</h3>
+                    <div id="engineeringSlowEndpoints" class="metrics-endpoints"></div>
+                </section>
+            </div>
+        </section>
+
+        <section id="workspaceView">
+        <section id="searchPanel" class="panel editable-panel" tabindex="-1">
+            <h2>Find templates</h2>
+            <div id="explorerShell" class="explorer-shell">
+                <div class="flow-explorer-module">
+                    <div class="flow-explorer-head">
+                        <div class="flow-explorer-scope" aria-live="polite">
+                            <span class="flow-explorer-label">Flow</span>
+                            <span id="flowExplorerScopeText" class="flow-explorer-flow-name">All flows</span>
+                        </div>
+                        <button id="clearExplorerButton" type="button" class="flow-explorer-clear">Clear path &amp; flow</button>
+                    </div>
+                    <div id="flowTabs" class="flow-tabs flow-explorer-tabs" aria-label="Flow filter"></div>
+                    <div id="breadcrumbBar" class="breadcrumb-bar breadcrumb-bar--chips" role="navigation" aria-label="Category path"></div>
+                    <div class="flow-explorer-path-row">
+                        <div id="flowExplorerNotice" class="flow-explorer-notice" role="status" aria-live="polite"></div>
+                        <button id="explorerUpButton" type="button" class="secondary flow-explorer-up" disabled>Up one level</button>
+                    </div>
+                </div>
+                <div class="explorer-lists">
+                    <div class="explorer-column">
+                        <h3>Categories at this level</h3>
+                        <div id="explorerPrimaryList" class="explorer-list"></div>
+                    </div>
+                    <div class="explorer-column">
+                        <h3>Sub-categories (next step)</h3>
+                        <div id="explorerSecondaryList" class="explorer-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-row">
+                <input id="searchInput" type="text" placeholder="Response code or words from the message">
+                <button id="searchButton" type="button">Search</button>
+                <button id="clearSearchButton" type="button" class="secondary">Clear</button>
+            </div>
+            <div id="nodeManagerPanel" class="node-manager hidden">
+                <h3>Manage category tree</h3>
+                <p class="node-manager-hint">Tip: use <strong>⋯</strong> on a row or <strong>right-click</strong> the row for the same actions without selecting first.</p>
+                <div id="selectedNodeSummary" class="node-summary">
+                    <p class="node-summary-empty">Select a category in the lists above. A short summary appears here when you add, rename, or delete nodes.</p>
+                </div>
+                <div class="button-row node-manager-actions">
+                    <button id="newNodeButton" type="button">New node</button>
+                    <button id="renameNodeButton" type="button" class="secondary">Rename</button>
+                    <button id="deleteNodeButton" type="button" class="danger">Delete</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="layout">
+            <section id="warningsPanel" class="panel editable-panel" tabindex="-1">
+                <div class="panel-title-row">
+                    <h2>Warnings</h2>
+                    <button id="editWarningsButton" type="button" class="secondary hidden">Edit warnings</button>
+                </div>
+                <ul id="warningsText" class="warnings-text"></ul>
+                <div id="warningsFormatControls" class="warnings-format-controls hidden">
+                    <button id="warningsBoldButton" type="button" class="secondary compact-format-btn"><strong>B</strong></button>
+                    <button id="warningsItalicButton" type="button" class="secondary compact-format-btn"><em>I</em></button>
+                    <button id="warningsUnderlineButton" type="button" class="secondary compact-format-btn"><u>U</u></button>
+                    <button id="warningsRedButton" type="button" class="secondary compact-format-btn">Red</button>
+                    <button id="warningsBulletButton" type="button" class="secondary compact-format-btn">Bullets</button>
+                </div>
+                <div id="warningsEditor" class="warnings-editor hidden" contenteditable="true"></div>
+                <div id="warningsActions" class="button-row hidden">
+                    <button id="saveWarningsButton" type="button">Save warnings</button>
+                    <button id="cancelWarningsButton" type="button" class="secondary">Cancel</button>
+                </div>
+            </section>
+
+            <section id="templatesPanel" class="panel editable-panel" tabindex="-1">
+                <div class="panel-title-row">
+                    <h2>Templates</h2>
+                    <div class="metrics-actions">
+                        <button id="newTemplateButton" type="button" class="hidden">New template</button>
+                        <button id="importTemplatesButton" type="button" class="secondary hidden">Import CSV</button>
+                        <button id="refreshButton" type="button" class="secondary">Refresh</button>
+                    </div>
+                </div>
+                <div id="templateList" class="template-list"></div>
+            </section>
+        </section>
+        </section>
+        </div>
+        </section>
+    </main>
+
+    <dialog id="templateFormDrawer" class="template-form-drawer hidden" aria-labelledby="templateFormDrawerTitle">
+        <div class="template-form-drawer-head">
+            <h2 id="templateFormDrawerTitle" class="template-form-drawer-title">Template</h2>
+            <span id="formMode" class="badge">Create mode</span>
+            <button id="closeTemplateDrawerButton" type="button" class="secondary template-form-drawer-close" aria-label="Close">Close</button>
+        </div>
+        <div class="template-form-drawer-body">
+            <section id="templateFormPanel" class="panel template-form-panel editable-panel template-form-panel--drawer" tabindex="-1">
+                <form id="templateForm">
+                    <input id="templateId" type="hidden">
+
+                    <label for="category">Category</label>
+                    <select id="category" name="category" required></select>
+
+                    <label for="responseCode">Response code</label>
+                    <input
+                        id="responseCode"
+                        name="responseCode"
+                        type="text"
+                        maxlength="100"
+                        placeholder="WELCOME_001"
+                        required
+                    >
+
+                    <label for="content">Template content</label>
+                    <textarea
+                        id="content"
+                        name="content"
+                        rows="14"
+                        placeholder="Hello {name},&#10;&#10;Welcome to our system.&#10;&#10;Regards,&#10;Support Team"
+                        required
+                    ></textarea>
+
+                    <div class="button-row template-form-drawer-actions">
+                        <button id="createButton" type="submit">Create</button>
+                        <button id="updateButton" type="button" class="secondary" disabled>Update</button>
+                        <button id="deleteButton" type="button" class="danger" disabled>Delete</button>
+                        <button id="resetButton" type="button" class="secondary">Reset</button>
+                    </div>
+                </form>
+
+                <p id="statusMessage" class="status"></p>
+            </section>
+        </div>
+    </dialog>
+    <div class="bottom-bar" aria-label="Display and session">
+        <div class="accessibility-toggles">
+            <button id="themeToggleButton" type="button" class="secondary compact-toggle">Dark mode</button>
+            <button id="adhdToggleButton" type="button" class="secondary compact-toggle">ADHD mode</button>
+            <button id="resetUiLayoutButton" type="button" class="secondary compact-toggle">Reset UI</button>
+        </div>
+        <div id="bottomMetricsBar" class="bottom-metrics-bar hidden" aria-label="Live usage metrics" tabindex="-1">
+            <div id="metricsBarStrip" class="metrics-bar-strip" aria-live="polite"></div>
+        </div>
+        <span id="sessionBadge" class="role-indicator"></span>
+    </div>
+    <button id="signatureButton" class="signature-button" type="button" aria-label="Signature">
+        made by Cali
+    </button>
+
+    <div id="explorerNodeContextMenu" class="explorer-node-context-menu hidden" role="menu" aria-label="Category actions" tabindex="-1">
+        <button type="button" class="explorer-node-menu-item" role="menuitem" data-menu-action="add-child">Add sub-category here</button>
+        <button type="button" class="explorer-node-menu-item" role="menuitem" data-menu-action="rename">Rename…</button>
+        <button type="button" class="explorer-node-menu-item explorer-node-menu-item--danger" role="menuitem" data-menu-action="delete">Delete subtree…</button>
+    </div>
+
+    <dialog id="nodeActionDialog" class="node-action-dialog">
+        <form id="nodeActionForm" method="dialog" class="node-action-form">
+            <h3 id="nodeActionTitle">Node Action</h3>
+            <p id="nodeActionHint" class="node-action-hint"></p>
+            <label for="nodeActionNameInput">Name</label>
+            <input id="nodeActionNameInput" type="text" maxlength="100" placeholder="Node name">
+            <label for="nodeActionFlowInput">Flow (optional)</label>
+            <input id="nodeActionFlowInput" type="text" maxlength="100" placeholder="Flow key">
+            <label for="nodeActionDeleteMode">Delete mode</label>
+            <select id="nodeActionDeleteMode">
+                <option value="delete">Delete subtree templates</option>
+                <option value="cancel">Cancel</option>
+            </select>
+            <div class="button-row">
+                <button id="nodeActionConfirmButton" type="button">Confirm</button>
+                <button id="nodeActionCancelButton" type="button" class="secondary">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="registerDialog" class="node-action-dialog">
+        <form id="registerForm" method="dialog" class="node-action-form">
+            <h3>Create account</h3>
+            <label for="registerUsername">Username</label>
+            <input id="registerUsername" type="text" maxlength="100" placeholder="new username" required>
+            <label for="registerPassword">Password</label>
+            <input id="registerPassword" type="password" maxlength="200" placeholder="password" required>
+            <label for="registerRole">Role</label>
+            <select id="registerRole">
+                <option value="user">user</option>
+                <option value="manager">manager</option>
+                <option value="developer">developer</option>
+            </select>
+            <p id="registerStatusMessage" class="status"></p>
+            <div class="button-row">
+                <button id="registerSubmitButton" type="submit">Create</button>
+                <button id="registerCancelButton" type="button" class="secondary">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="importDialog" class="node-action-dialog">
+        <form id="importForm" method="dialog" class="node-action-form">
+            <h3>Import templates from CSV</h3>
+            <p class="node-action-hint">Defaults when omitted: category=newtemp, flow=newtemp, language=current UI language.</p>
+            <label for="importFileInput">CSV file</label>
+            <input id="importFileInput" type="file" accept=".csv,text/csv" required>
+            <div class="button-row">
+                <button id="importSubmitButton" type="submit">Import</button>
+                <button id="importCancelButton" type="button" class="secondary">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

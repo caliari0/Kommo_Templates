@@ -1,0 +1,243 @@
+# Kommo Templates CRUD
+
+This project is organized around a clean FastAPI CRUD flow with:
+
+- API endpoints
+- a simple web UI
+- role-based access
+- language-aware templates
+- SQLite persistence
+
+Current version: `v3.1.2`
+
+## What This App Does
+
+This app manages reusable message templates by response code.
+
+- create templates
+- list templates
+- search by code/content
+- update and delete templates
+- keep templates separated by language (`en`, `es`, `pt`)
+
+The app has three roles:
+
+- `manager`: full template CRUD and category-tree management, plus Business Dashboard
+- `developer`: same as manager, plus Engineering Dashboard and deeper technical diagnostics
+- `user`: read-only
+
+## Tech Stack
+
+- Python
+- FastAPI
+- SQLAlchemy
+- Pydantic
+- SQLite
+- Vanilla HTML/CSS/JS
+
+## Run Locally (PowerShell)
+
+### 1) Create the virtual environment
+
+```powershell
+python -m venv .venv
+```
+
+### 2) Activate it
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+If execution policy blocks activation, you can run directly with:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+### 3) Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 4) Start the app
+
+```powershell
+uvicorn app.main:app --reload
+```
+
+### Optional: app + Cloudflare Tunnel (PowerShell)
+
+For a one-shot local run with `uvicorn` and `cloudflared` (writes logs next to the repo root; frees port 8000 first):
+
+```powershell
+.\scripts\start_app_and_tunnel.ps1
+```
+
+Then open:
+
+- UI: `http://127.0.0.1:8000/ui`
+- Swagger: `http://127.0.0.1:8000/docs`
+
+## API Auth
+
+The API supports account login with bearer tokens and keeps `X-Role` as a legacy fallback.
+
+- `manager` / `developer`: template CRUD, category tree, and admin routes where applicable
+- `user`: read-only routes
+
+Error behavior:
+
+- missing header -> `401 Unauthorized`
+- invalid role -> `403 Forbidden`
+- valid role without permission -> `403 Forbidden`
+
+Example:
+
+```powershell
+curl -H "X-Role: manager" http://127.0.0.1:8000/templates
+```
+
+## UI Login and Accounts
+
+The `/ui` login uses database-backed accounts.
+
+- Use **Create account** on the login screen to register a new account.
+- Self-registration roles are `user`, `manager`, or `developer`.
+- `developer` users can also manage other accounts from the Engineering Dashboard.
+- Default seeded accounts are preserved for continuity: `manager`, `developer`, and `user` (password `kommotemplates0`).
+
+## Web UI (Flow Explorer and Templates)
+
+After login, the workspace uses a **Kommo-style** shell with role-based dashboard access. The left navigation rail shows only what your role can use (no unnecessary scrollbar).
+
+- `manager`: **Business Dashboard** + Workspace
+- `developer`: **Business Dashboard** + **Engineering Dashboard** + Workspace
+- `user`: Workspace only
+
+The **Find templates** panel (rail: “Find templates and categories”) includes a **Flow Explorer**: flow tabs, chip-style breadcrumbs, **Up one level** and **Clear path & flow**, two columns (**Categories at this level** / **Sub-categories (next step)**), and optional template search. Switching to a flow tab that does not match the current path clears the path and shows a short inline notice.
+
+**Templates** lists templates for the current scope; each card has **Edit** and **Copy** (managers/developers), **Report/Clear** for outdated feedback, and a **copy counter**. **Edit** opens the template form in a **drawer** (`<dialog>`) so the list stays in view.
+
+**Flow Node Management** (shown for `manager` and `developer`):
+
+- **New node** — behavior depends on the selected flow tab:
+  - **All flows** — creates a **top-level** category node (no parent).
+  - A **specific flow** tab — creates a **child** of the currently **selected** node in the explorer (select a parent in that flow first).
+- **Rename** and **Delete** apply to the selected node (including top-level roots).
+- **⋯** on each category row or **right-click** the row opens the same actions: **Add sub-category here** (always uses that row as `parent_id`, including under **All flows**), **Rename…**, **Delete subtree…** — so you can manage nodes without selecting first.
+
+Contextual **warnings** can be edited per node or flow when the user has permission.
+
+**Business Dashboard** (`manager` + `developer`) focuses on operational outcomes:
+
+- user activity and template usage snapshots
+- requests per hour across the last 24 hours
+- top active users, top copied templates, usage by language
+- role insights for quick decisions
+
+**Engineering Dashboard** (`developer` only) focuses on system diagnostics and reporting:
+
+- request traffic and error rate
+- latency percentiles (`p50`, `p95`, `p99`)
+- status code distribution and role traffic
+- auth failures (24h)
+- slow endpoints ranked by `p95` latency
+- integrated live usage metrics + one-click report generation
+- user accounts panel focused on non-seeded accounts
+
+**Reports and recent changes**:
+
+- **Reports** bell (manager/developer): grouped outdated reports with commentary, quick **Go to template**, and **Mark reviewed** actions.
+- **Recent changes** bell (all users): collapsible list of templates changed since that user's last session, with a direct **Go to template** action and **Mark all as seen**.
+
+**User management and metrics**:
+
+- **Developer** users manage accounts directly inside Engineering Dashboard.
+- Seeded default accounts (`manager`, `developer`, `user`) stay protected and are hidden from the dashboard account list.
+- Metrics include global + per-user activity, with status-code hover descriptions and report generation.
+
+## UI Extras
+
+The web UI includes accessibility-focused toggles in the **bottom-left bar**:
+
+- Dark/Light mode toggle
+- ADHD mode toggle (switches app fonts to Comfortaa)
+- Reset UI (clears saved panel height preferences)
+
+There is also a small secret button hidden in the interface for curious users to discover.
+
+## Main Endpoints
+
+**Templates**
+
+- `POST /templates`
+- `GET /templates`
+- `GET /templates?language=en`
+- `GET /templates/search?q=welcome&language=es`
+- `GET /templates/{id}`
+- `PUT /templates/{id}`
+- `DELETE /templates/{id}`
+- `PATCH /templates/{id}/copied` (increments template copy counter)
+- `PATCH /templates/{id}/outdated/report` (optional commentary + reporter)
+- `PATCH /templates/{id}/outdated/clear`
+- `GET /templates/outdated/count`
+- `GET /templates/outdated/summary`
+
+**Category tree** (manager/developer; see OpenAPI for full query and role rules)
+
+- `GET /templates/categories/tree`
+- `POST /templates/categories/nodes` — optional `parent_id`; omit for a root node
+- `PUT /templates/categories/nodes/{node_id}`
+- `DELETE /templates/categories/nodes/{node_id}`
+
+**Auth and account endpoints**
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
+- `GET /admin/users` (developer only)
+- `PUT /admin/users/{user_id}` (developer only)
+- `DELETE /admin/users/{user_id}` (developer only)
+- `GET /admin/dashboard/business` (manager/developer)
+- `GET /admin/dashboard/engineering` (developer only)
+
+## Example Payload
+
+```json
+{
+  "category": "Onboarding",
+  "language": "en",
+  "response_code": "WELCOME_001",
+  "content": "Hello {name},\n\nWelcome to our system.\n\nRegards,\nSupport Team"
+}
+```
+
+## Project Structure
+
+```text
+app/
+├── adapters/
+│   ├── api/            # FastAPI routes + schemas
+│   └── web/            # UI routes + static files
+├── application/        # use-case services
+├── domain/             # entities + interfaces
+├── infrastructure/     # SQLAlchemy + repository implementation
+└── main.py             # app entry point
+```
+
+## Data Notes
+
+- SQLite database file: `app.db`
+- Table is created on startup
+- `response_code` is unique per language
+- `content` supports multiline text
+
+## Trade-offs and Decisions
+
+- SQLite is used because it is quick to set up and good enough for local/testing scenarios.
+- Auth is intentionally simple: lightweight token flow with a legacy header fallback for compatibility.
+- The frontend uses vanilla JS to avoid extra framework overhead for this scope.
+- The layered architecture (`domain/application/adapters/infrastructure`) keeps business rules separate from HTTP and DB concerns.
