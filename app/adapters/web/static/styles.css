@@ -53,6 +53,7 @@ body.dark-theme {
 }
 
 body.kommo-ui {
+    position: relative;
     margin: 0;
     font-family: var(--font-ui);
     font-size: 15px;
@@ -1817,9 +1818,8 @@ button:disabled {
 }
 
 .signature-button {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
+    position: absolute;
+    right: 12px;
     bottom: 10px;
     border: none;
     padding: 4px 6px;
@@ -1838,6 +1838,10 @@ button:disabled {
 }
 
 .signature-claude-symbol {
+    color: inherit;
+}
+
+.signature-button.revealed .signature-claude-symbol {
     color: #d97757;
 }
 
