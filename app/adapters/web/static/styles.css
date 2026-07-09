@@ -1818,7 +1818,8 @@ button:disabled {
 
 .signature-button {
     position: fixed;
-    right: 12px;
+    left: 50%;
+    transform: translateX(-50%);
     bottom: 10px;
     border: none;
     padding: 4px 6px;
