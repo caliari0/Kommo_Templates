@@ -214,10 +214,10 @@
                 <h3>Manage category tree</h3>
                 <p class="node-manager-hint">Tip: use <strong>⋯</strong> on a row or <strong>right-click</strong> the row for the same actions without selecting first.</p>
                 <div id="selectedNodeSummary" class="node-summary">
-                    <p class="node-summary-empty">Select a category in the lists above. A short summary appears here when you add, rename, or delete nodes.</p>
+                    <p class="node-summary-empty">Select a category in the lists above. A short summary appears here when you add, rename, or delete steps.</p>
                 </div>
                 <div class="button-row node-manager-actions">
-                    <button id="newNodeButton" type="button">New node</button>
+                    <button id="newNodeButton" type="button">New step</button>
                     <button id="renameNodeButton" type="button" class="secondary">Rename</button>
                     <button id="deleteNodeButton" type="button" class="danger">Delete</button>
                 </div>
@@ -319,7 +319,7 @@
         <span id="sessionBadge" class="role-indicator"></span>
     </div>
     <button id="signatureButton" class="signature-button" type="button" aria-label="Signature">
-        made by Cali
+        made with <span class="signature-claude-symbol" aria-hidden="true">✳</span>, by Cali
     </button>
 
     <div id="explorerNodeContextMenu" class="explorer-node-context-menu hidden" role="menu" aria-label="Category actions" tabindex="-1">
@@ -330,10 +330,10 @@
 
     <dialog id="nodeActionDialog" class="node-action-dialog">
         <form id="nodeActionForm" method="dialog" class="node-action-form">
-            <h3 id="nodeActionTitle">Node Action</h3>
+            <h3 id="nodeActionTitle">Step Action</h3>
             <p id="nodeActionHint" class="node-action-hint"></p>
             <label for="nodeActionNameInput">Name</label>
-            <input id="nodeActionNameInput" type="text" maxlength="100" placeholder="Node name">
+            <input id="nodeActionNameInput" type="text" maxlength="100" placeholder="Step name">
             <label for="nodeActionFlowInput">Flow (optional)</label>
             <input id="nodeActionFlowInput" type="text" maxlength="100" placeholder="Flow key">
             <label for="nodeActionDeleteMode">Delete mode</label>

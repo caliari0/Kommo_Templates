@@ -296,19 +296,10 @@ body.adhd-mode {
 }
 
 .dashboard-panel:nth-child(1),
-.dashboard-panel:nth-child(2) {
+.dashboard-panel:nth-child(2),
+.dashboard-panel:nth-child(3),
+.dashboard-panel:nth-child(4) {
     grid-column: span 6;
-}
-
-.dashboard-panel:nth-child(3) {
-    grid-column: span 12;
-}
-
-.dashboard-panel:nth-child(4),
-.dashboard-panel:nth-child(5),
-.dashboard-panel:nth-child(6),
-.dashboard-panel:nth-child(7) {
-    grid-column: span 4;
 }
 
 .dashboard-stats {
@@ -1843,6 +1834,10 @@ button:disabled {
 
 .signature-button.revealed {
     color: var(--color-text-subtle);
+}
+
+.signature-claude-symbol {
+    color: #d97757;
 }
 
 @media (prefers-reduced-motion: reduce) {

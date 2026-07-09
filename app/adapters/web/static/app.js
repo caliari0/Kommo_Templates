@@ -1096,7 +1096,7 @@ function updateSelectedNodeSummary() {
         return;
     }
     const emptyCopy =
-        '<p class="node-summary-empty">Select a category in the lists above. A short summary appears here when you add, rename, or delete nodes.</p>';
+        '<p class="node-summary-empty">Select a category in the lists above. A short summary appears here when you add, rename, or delete steps.</p>';
     if (!selectedNodeId) {
         el.innerHTML = emptyCopy;
         return;
@@ -1168,10 +1168,10 @@ function openNodeActionDialog(action, { contextNodeId } = {}) {
             elements.nodeActionNameInput.placeholder = "New sub-category name";
             elements.nodeActionFlowInput.value = parentNode.flow || selectedFlowTab || "";
         } else if (selectedFlowTab === "all") {
-            elements.nodeActionTitle.textContent = "Create Top-Level Node";
+            elements.nodeActionTitle.textContent = "Create Top-Level Step";
             elements.nodeActionHint.textContent =
-                "With \"All flows\" selected, the new node is a root category (no parent). Flow defaults to general if blank.";
-            elements.nodeActionNameInput.placeholder = "Node name";
+                "With \"All flows\" selected, the new step is a root category (no parent). Flow defaults to general if blank.";
+            elements.nodeActionNameInput.placeholder = "Step name";
             elements.nodeActionFlowInput.value = "";
         } else {
             const parentForCreate = selectedNodeId
@@ -1179,36 +1179,36 @@ function openNodeActionDialog(action, { contextNodeId } = {}) {
                 : null;
             if (!parentForCreate) {
                 pendingNodeContextId = null;
-                setStatus("Select a parent node in this flow first.", "error");
+                setStatus("Select a parent step in this flow first.", "error");
                 return;
             }
-            elements.nodeActionTitle.textContent = "Create Node";
+            elements.nodeActionTitle.textContent = "Create Step";
             elements.nodeActionHint.textContent = `Parent: ${parentForCreate.path}`;
-            elements.nodeActionNameInput.placeholder = "Node name";
+            elements.nodeActionNameInput.placeholder = "Step name";
             elements.nodeActionFlowInput.value = parentForCreate.flow || selectedFlowTab || "";
         }
     } else if (action === "rename") {
         if (!targetNodeForRenameDelete) {
             pendingNodeContextId = null;
-            setStatus("Select a node first.", "error");
+            setStatus("Select a step first.", "error");
             return;
         }
-        elements.nodeActionTitle.textContent = "Rename Node";
+        elements.nodeActionTitle.textContent = "Rename Step";
         elements.nodeActionHint.textContent =
             targetNodeForRenameDelete.parent_id == null
                 ? `Current: ${targetNodeForRenameDelete.path} (top-level)`
                 : `Current: ${targetNodeForRenameDelete.path}`;
         elements.nodeActionNameInput.value = targetNodeForRenameDelete.name;
-        elements.nodeActionNameInput.placeholder = "New node name";
+        elements.nodeActionNameInput.placeholder = "New step name";
     } else {
         if (!targetNodeForRenameDelete) {
             pendingNodeContextId = null;
-            setStatus("Select a node first.", "error");
+            setStatus("Select a step first.", "error");
             return;
         }
-        elements.nodeActionTitle.textContent = "Delete Node Subtree";
+        elements.nodeActionTitle.textContent = "Delete Step Subtree";
         elements.nodeActionHint.textContent =
-            `Selected: ${targetNodeForRenameDelete.path}\nDeleting this node removes its descendants.`;
+            `Selected: ${targetNodeForRenameDelete.path}\nDeleting this step removes its descendants.`;
     }
 
     const showDeleteControls = action === "delete";
@@ -2531,7 +2531,7 @@ async function deleteTemplate() {
 
 async function confirmNodeAction() {
     if (!["manager", "developer"].includes(currentSession?.role || "")) {
-        setStatus("Only manager or developer can manage nodes.", "error");
+        setStatus("Only manager or developer can manage steps.", "error");
         return;
     }
 
@@ -2539,7 +2539,7 @@ async function confirmNodeAction() {
         if (pendingNodeAction === "create_node") {
             const name = elements.nodeActionNameInput.value.trim();
             if (!name) {
-                setStatus("Provide a node name.", "error");
+                setStatus("Provide a step name.", "error");
                 return;
             }
             const params = new URLSearchParams();
@@ -2555,7 +2555,7 @@ async function confirmNodeAction() {
                 parentIdForPost = selectedNodeId;
             }
             if (selectedFlowTab !== "all" && parentIdForPost == null) {
-                setStatus("Select a parent node in this flow first.", "error");
+                setStatus("Select a parent step in this flow first.", "error");
                 return;
             }
             if (parentIdForPost != null) {
@@ -2575,19 +2575,19 @@ async function confirmNodeAction() {
             await loadTemplates();
             setStatus(
                 parentIdForPost != null
-                    ? `Node created: ${created.path}`
-                    : `Top-level node created: ${created.path}`,
+                    ? `Step created: ${created.path}`
+                    : `Top-level step created: ${created.path}`,
                 "success",
             );
         } else if (pendingNodeAction === "rename") {
             const targetNodeId = pendingNodeContextId ?? selectedNodeId;
             if (!targetNodeId) {
-                setStatus("Select a node first.", "error");
+                setStatus("Select a step first.", "error");
                 return;
             }
             const name = elements.nodeActionNameInput.value.trim();
             if (!name) {
-                setStatus("Provide a new node name.", "error");
+                setStatus("Provide a new step name.", "error");
                 return;
             }
             const params = new URLSearchParams();
@@ -2605,11 +2605,11 @@ async function confirmNodeAction() {
             renderBreadcrumb(selectedExplorerPath);
             renderWarningsText();
             await loadTemplates();
-            setStatus(`Node updated: ${updated.path}`, "success");
+            setStatus(`Step updated: ${updated.path}`, "success");
         } else if (pendingNodeAction === "delete") {
             const targetNodeId = pendingNodeContextId ?? selectedNodeId;
             if (!targetNodeId) {
-                setStatus("Select a node first.", "error");
+                setStatus("Select a step first.", "error");
                 return;
             }
             if (elements.nodeActionDeleteMode.value === "cancel") {
@@ -2629,7 +2629,7 @@ async function confirmNodeAction() {
             renderBreadcrumb("");
             renderWarningsText();
             await loadTemplates();
-            setStatus("Node subtree deleted successfully.", "success");
+            setStatus("Step subtree deleted successfully.", "success");
         }
         elements.nodeActionDialog.close();
     } catch (error) {
