@@ -95,39 +95,15 @@ def _cleanup_expired(now: datetime) -> None:
 
 
 def _build_dashboard_payload(now: datetime) -> dict[str, object]:
-    fifteen_min_cutoff = now - timedelta(minutes=15)
     sixty_min_cutoff = now - timedelta(minutes=60)
-    twenty_four_hour_cutoff = now - timedelta(hours=24)
 
     with _metrics_lock:
         _cleanup_expired(now)
         events = list(_request_events)
 
-    events_last_15 = [event for event in events if event["timestamp"] >= fifteen_min_cutoff]
     events_last_60 = [event for event in events if event["timestamp"] >= sixty_min_cutoff]
-    events_last_24h = [event for event in events if event["timestamp"] >= twenty_four_hour_cutoff]
 
     top_users = Counter(event.get("username", "anonymous") for event in events_last_60).most_common(8)
-    role_breakdown = Counter(event.get("role", "anonymous") for event in events_last_60)
-
-    # Whole-hour windows across the last 24 hours.
-    hourly_windows: list[dict[str, object]] = []
-    current_hour = now.replace(minute=0, second=0, microsecond=0)
-    for index in range(23, -1, -1):
-        window_start = current_hour - timedelta(hours=index)
-        window_end = window_start + timedelta(hours=1)
-        requests = sum(
-            1
-            for event in events_last_24h
-            if window_start <= event["timestamp"] < window_end
-        )
-        hourly_windows.append(
-            {
-                "window_start_utc": window_start.isoformat(),
-                "window_end_utc": window_end.isoformat(),
-                "requests": requests,
-            }
-        )
 
     db = SessionLocal()
     try:
@@ -136,8 +112,6 @@ def _build_dashboard_payload(now: datetime) -> dict[str, object]:
         outdated_templates = db.query(func.count(MessageTemplateModel.id)).filter(
             MessageTemplateModel.is_outdated.is_(True)
         ).scalar() or 0
-        total_users = db.query(func.count(UserModel.id)).scalar() or 0
-        active_users = db.query(func.count(UserModel.id)).filter(UserModel.is_active.is_(True)).scalar() or 0
 
         top_templates = db.query(
             MessageTemplateModel.response_code,
@@ -156,15 +130,7 @@ def _build_dashboard_payload(now: datetime) -> dict[str, object]:
     return {
         "generated_at_utc": now.isoformat(),
         "user_metrics": {
-            "active_sessions_last_15m": len({event["session_key"] for event in events_last_15}),
-            "unique_users_last_60m": len({event.get("username", "anonymous") for event in events_last_60}),
-            "request_count_last_15m": len(events_last_15),
-            "request_count_last_60m": len(events_last_60),
-            "total_registered_users": total_users,
-            "active_registered_users": active_users,
-            "roles_last_60m": dict(role_breakdown),
             "top_users_last_60m": [{"username": username, "requests": count} for username, count in top_users],
-            "requests_per_hour_last_24h": hourly_windows,
         },
         "template_usage": {
             "total_templates": total_templates,

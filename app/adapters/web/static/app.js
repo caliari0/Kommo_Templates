@@ -110,13 +110,10 @@ const elements = {
     workspaceView: document.getElementById("workspaceView"),
     businessDashboardView: document.getElementById("businessDashboardView"),
     engineeringDashboardView: document.getElementById("engineeringDashboardView"),
-    dashboardUserStats: document.getElementById("dashboardUserStats"),
     dashboardTemplateStats: document.getElementById("dashboardTemplateStats"),
-    dashboardRequestsChart: document.getElementById("dashboardRequestsChart"),
     dashboardTopUsers: document.getElementById("dashboardTopUsers"),
     dashboardTopTemplates: document.getElementById("dashboardTopTemplates"),
     dashboardLanguageUsage: document.getElementById("dashboardLanguageUsage"),
-    dashboardRoleInsights: document.getElementById("dashboardRoleInsights"),
     engineeringTrafficStats: document.getElementById("engineeringTrafficStats"),
     engineeringLatencyStats: document.getElementById("engineeringLatencyStats"),
     engineeringStatusCodes: document.getElementById("engineeringStatusCodes"),
@@ -280,20 +277,6 @@ function renderBusinessDashboard(payload) {
     const userMetrics = payload.user_metrics || {};
     const templateUsage = payload.template_usage || {};
 
-    elements.dashboardUserStats.innerHTML = [
-        ["Active sessions (15m)", userMetrics.active_sessions_last_15m],
-        ["Unique users (60m)", userMetrics.unique_users_last_60m],
-        ["Requests (15m)", userMetrics.request_count_last_15m],
-        ["Requests (60m)", userMetrics.request_count_last_60m],
-        ["Registered users", userMetrics.total_registered_users],
-        ["Active user accounts", userMetrics.active_registered_users],
-    ].map(([label, value]) => `
-        <div class="metric-item">
-            <span class="metric-label">${escapeHtml(String(label))}</span>
-            <span class="metric-value">${escapeHtml(String(value ?? 0))}</span>
-        </div>
-    `).join("");
-
     elements.dashboardTemplateStats.innerHTML = [
         ["Total templates", templateUsage.total_templates],
         ["Total copies", templateUsage.total_copies],
@@ -304,11 +287,6 @@ function renderBusinessDashboard(payload) {
             <span class="metric-value">${escapeHtml(String(value ?? 0))}</span>
         </div>
     `).join("");
-
-    const chartData = Array.isArray(userMetrics.requests_per_hour_last_24h)
-        ? userMetrics.requests_per_hour_last_24h
-        : [];
-    renderRequestsChart(chartData);
 
     const topUsers = Array.isArray(userMetrics.top_users_last_60m) ? userMetrics.top_users_last_60m : [];
     elements.dashboardTopUsers.innerHTML = topUsers.length
@@ -341,73 +319,6 @@ function renderBusinessDashboard(payload) {
             </div>
         `).join("")
         : '<div class="empty-state">No language usage breakdown yet.</div>';
-
-    renderRoleInsights(userMetrics);
-}
-
-function renderRoleInsights(userMetrics) {
-    const role = currentSession?.role || "user";
-    const rolesBreakdown = userMetrics.roles_last_60m || {};
-    const breakdownRows = Object.entries(rolesBreakdown)
-        .sort((a, b) => Number(b[1]) - Number(a[1]));
-
-    if (role === "developer") {
-        const busiest = [...(userMetrics.requests_per_hour_last_24h || [])]
-            .sort((a, b) => Number(b.requests || 0) - Number(a.requests || 0))[0];
-        const busiestLabel = busiest
-            ? `${new Date(busiest.window_end_utc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (${busiest.requests} req)`
-            : "No traffic";
-        elements.dashboardRoleInsights.innerHTML = `
-            <div class="endpoint-item">
-                <span class="endpoint-name">Busiest hour (24h)</span>
-                <span class="endpoint-count">${escapeHtml(busiestLabel)}</span>
-            </div>
-            ${breakdownRows.map(([label, value]) => `
-                <div class="endpoint-item">
-                    <span class="endpoint-name">Role traffic: ${escapeHtml(label)}</span>
-                    <span class="endpoint-count">${formatNumber(Number(value || 0))} req</span>
-                </div>
-            `).join("") || '<div class="empty-state">No role traffic yet.</div>'}
-        `;
-        return;
-    }
-
-    elements.dashboardRoleInsights.innerHTML = `
-        <div class="endpoint-item">
-            <span class="endpoint-name">Manager view</span>
-            <span class="endpoint-count">Business summary depth</span>
-        </div>
-        ${breakdownRows.slice(0, 3).map(([label, value]) => `
-            <div class="endpoint-item">
-                <span class="endpoint-name">${escapeHtml(label)} traffic (60m)</span>
-                <span class="endpoint-count">${formatNumber(Number(value || 0))} req</span>
-            </div>
-        `).join("") || '<div class="empty-state">No role traffic yet.</div>'}
-    `;
-}
-
-function renderRequestsChart(chartData) {
-    if (!Array.isArray(chartData) || !chartData.length) {
-        elements.dashboardRequestsChart.innerHTML = '<div class="empty-state">No request activity yet.</div>';
-        return;
-    }
-    const yMax = Math.max(1, ...chartData.map((item) => Number(item.requests || 0)));
-    elements.dashboardRequestsChart.innerHTML = chartData.map((item, index) => {
-        const value = Number(item.requests || 0);
-        const hour = new Date(item.window_end_utc || Date.now());
-        hour.setMinutes(0, 0, 0);
-        const label = hour.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const heightPct = Math.max(5, Math.round((value / yMax) * 100));
-        const markerClass = index % 3 === 0 || index === chartData.length - 1 ? "" : " dashboard-hour-label-muted";
-        return `
-            <div class="dashboard-hour-bar-wrap" title="${escapeHtml(label)} - ${value} requests">
-                <div class="dashboard-hour-bar-track">
-                    <div class="dashboard-hour-bar" style="height:${heightPct}%"></div>
-                </div>
-                <span class="dashboard-hour-label${markerClass}">${escapeHtml(label)}</span>
-            </div>
-        `;
-    }).join("");
 }
 
 function renderEngineeringDashboard(payload) {
