@@ -47,13 +47,11 @@ const elements = {
     responseCode: document.getElementById("responseCode"),
     content: document.getElementById("content"),
     searchInput: document.getElementById("searchInput"),
-    flowTabs: document.getElementById("flowTabs"),
     explorerPrimaryList: document.getElementById("explorerPrimaryList"),
     explorerSecondaryList: document.getElementById("explorerSecondaryList"),
     breadcrumbBar: document.getElementById("breadcrumbBar"),
-    flowExplorerScopeText: document.getElementById("flowExplorerScopeText"),
     clearExplorerButton: document.getElementById("clearExplorerButton"),
-    flowExplorerNotice: document.getElementById("flowExplorerNotice"),
+    explorerNotice: document.getElementById("explorerNotice"),
     explorerUpButton: document.getElementById("explorerUpButton"),
     nodeManagerPanel: document.getElementById("nodeManagerPanel"),
     selectedNodeSummary: document.getElementById("selectedNodeSummary"),
@@ -65,7 +63,6 @@ const elements = {
     nodeActionTitle: document.getElementById("nodeActionTitle"),
     nodeActionHint: document.getElementById("nodeActionHint"),
     nodeActionNameInput: document.getElementById("nodeActionNameInput"),
-    nodeActionFlowInput: document.getElementById("nodeActionFlowInput"),
     nodeActionDeleteMode: document.getElementById("nodeActionDeleteMode"),
     nodeActionConfirmButton: document.getElementById("nodeActionConfirmButton"),
     nodeActionCancelButton: document.getElementById("nodeActionCancelButton"),
@@ -153,10 +150,8 @@ let outdatedRefreshIntervalId = null;
 let categoryTreeData = [];
 let lastLoadedUsers = [];
 let selectedExplorerPath = "";
-let selectedExplorerFlow = "general";
-let selectedFlowTab = "all";
 let templateCountsByPath = {};
-let flowExplorerNoticeTimer = null;
+let explorerNoticeTimer = null;
 let isEditingWarnings = false;
 let selectedNodeId = null;
 let pendingNodeAction = null;
@@ -514,11 +509,8 @@ function goToTemplateById(templateId) {
         }
         selectedExplorerPath = "";
         selectedNodeId = null;
-        selectedFlowTab = "all";
-        selectedExplorerFlow = template.flow || "general";
         renderBreadcrumb("");
-        renderFlowTabs();
-        renderFlowExplorerTree();
+        renderCategoryExplorerTree();
         elements.searchInput.value = template.response_code || "";
         await loadTemplates();
         const match = currentTemplates.find((item) => item.id === template.id);
@@ -587,7 +579,7 @@ function setCreateMode() {
 }
 
 function currentWarningsKey() {
-    return selectedExplorerPath || `flow:${selectedFlowTab || "all"}`;
+    return selectedExplorerPath || "root";
 }
 
 function readWarningsMap() {
@@ -607,20 +599,12 @@ function writeWarningsMap(warningsByNode) {
     localStorage.setItem(WARNINGS_STORAGE_KEY, JSON.stringify(warningsByNode));
 }
 
-function humanizeFlow(flow) {
-    if (!flow || flow === "all") {
-        return "general";
-    }
-    return flow.replaceAll("_", " ");
-}
-
 function generateNodeWarningsText() {
-    const nodeLabel = selectedExplorerPath || `Flow: ${humanizeFlow(selectedFlowTab)}`;
-    const flowLabel = humanizeFlow(selectedExplorerFlow || selectedFlowTab);
+    const nodeLabel = selectedExplorerPath || "All categories";
     return [
         `Node-specific warning for "${nodeLabel}": validate placeholders before publishing edits.`,
         `Compliance warning for "${nodeLabel}": do not include personal or sensitive customer data.`,
-        `Operational warning for "${nodeLabel}": confirm language (${currentLanguage.toUpperCase()}) and flow (${flowLabel}) before using this template.`,
+        `Operational warning for "${nodeLabel}": confirm language (${currentLanguage.toUpperCase()}) before using this template.`,
     ].join("\n");
 }
 
@@ -745,7 +729,7 @@ function applyUiLayout(layout) {
     });
 }
 
-function resetPanelsToFlowLayout() {
+function resetPanelsToDefaultLayout() {
     getEditablePanels().forEach((panel) => {
         panel.style.height = "";
     });
@@ -766,40 +750,27 @@ function initUiEditInteractions() {
     getEditablePanels().forEach((panel) => observer.observe(panel));
 }
 
-function normalizeFlowLabel(flow) {
-    return flow.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+function dismissExplorerNotice() {
+    if (explorerNoticeTimer) {
+        clearTimeout(explorerNoticeTimer);
+        explorerNoticeTimer = null;
+    }
+    if (elements.explorerNotice) {
+        elements.explorerNotice.textContent = "";
+    }
 }
 
-function updateFlowExplorerScope() {
-    if (!elements.flowExplorerScopeText) {
+function showExplorerNotice(message) {
+    if (!elements.explorerNotice || !message) {
         return;
     }
-    const label =
-        selectedFlowTab === "all" ? "All flows" : normalizeFlowLabel(selectedFlowTab);
-    elements.flowExplorerScopeText.textContent = label;
-}
-
-function dismissFlowExplorerNotice() {
-    if (flowExplorerNoticeTimer) {
-        clearTimeout(flowExplorerNoticeTimer);
-        flowExplorerNoticeTimer = null;
-    }
-    if (elements.flowExplorerNotice) {
-        elements.flowExplorerNotice.textContent = "";
-    }
-}
-
-function showFlowExplorerNotice(message) {
-    if (!elements.flowExplorerNotice || !message) {
-        return;
-    }
-    dismissFlowExplorerNotice();
-    elements.flowExplorerNotice.textContent = message;
-    flowExplorerNoticeTimer = setTimeout(() => {
-        if (elements.flowExplorerNotice) {
-            elements.flowExplorerNotice.textContent = "";
+    dismissExplorerNotice();
+    elements.explorerNotice.textContent = message;
+    explorerNoticeTimer = setTimeout(() => {
+        if (elements.explorerNotice) {
+            elements.explorerNotice.textContent = "";
         }
-        flowExplorerNoticeTimer = null;
+        explorerNoticeTimer = null;
     }, 9000);
 }
 
@@ -960,7 +931,7 @@ function setupExplorerNodeActionMenus() {
         }
     });
     shell.addEventListener("contextmenu", (e) => {
-        const row = e.target.closest(".flow-node-row");
+        const row = e.target.closest(".category-node-row");
         if (!row || !canManageCategoryNodes()) {
             return;
         }
@@ -990,52 +961,6 @@ function setupExplorerNodeActionMenus() {
     });
 }
 
-function renderFlowTabs() {
-    const flows = [
-        "all",
-        ...new Set(
-            categoryTreeData
-                .map((node) => (node.flow || "").trim().toLowerCase())
-                .filter(Boolean),
-        ),
-    ];
-    elements.flowTabs.innerHTML = flows
-        .map((flow) => {
-            const label = flow === "all" ? "All flows" : normalizeFlowLabel(flow);
-            const active = flow === selectedFlowTab ? "active" : "";
-            return `<button type="button" class="flow-tab ${active}" data-flow-tab="${escapeHtml(flow)}">${escapeHtml(label)}</button>`;
-        })
-        .join("");
-
-    elements.flowTabs.querySelectorAll("[data-flow-tab]").forEach((button) => {
-        button.addEventListener("click", async () => {
-            selectedFlowTab = (button.dataset.flowTab || "all").toLowerCase();
-            if (selectedFlowTab !== "all") {
-                selectedExplorerFlow = selectedFlowTab;
-            }
-            let pathClearedForOtherFlow = false;
-            if (selectedExplorerPath) {
-                const selectedNode = findNodeByPath(categoryTreeData, selectedExplorerPath);
-                if (selectedNode?.flow !== selectedFlowTab) {
-                    selectedExplorerPath = "";
-                    renderBreadcrumb("");
-                    pathClearedForOtherFlow = selectedFlowTab !== "all";
-                }
-            }
-            renderFlowTabs();
-            renderFlowExplorerTree();
-            renderWarningsText();
-            await loadTemplates();
-            if (pathClearedForOtherFlow) {
-                showFlowExplorerNotice(
-                    "Your category path was cleared because those categories belong to a different flow than the tab you picked.",
-                );
-            }
-        });
-    });
-    updateFlowExplorerScope();
-}
-
 function renderBreadcrumb(path) {
     if (!path) {
         elements.breadcrumbBar.innerHTML =
@@ -1059,10 +984,10 @@ function renderBreadcrumb(path) {
     elements.breadcrumbBar.innerHTML = chunks.join("");
     elements.breadcrumbBar.querySelectorAll("[data-breadcrumb-path]").forEach((button) => {
         button.addEventListener("click", async () => {
-            dismissFlowExplorerNotice();
+            dismissExplorerNotice();
             selectedExplorerPath = button.dataset.breadcrumbPath || "";
             renderBreadcrumb(selectedExplorerPath);
-            renderFlowExplorerTree();
+            renderCategoryExplorerTree();
             renderWarningsText();
             await loadTemplates();
         });
@@ -1125,15 +1050,10 @@ function updateSelectedNodeSummary() {
     }
     const childrenCount = (node.children || []).length;
     const templateCount = templateCountsByPath[node.path] || 0;
-    const flowKey = (node.flow || "general").toString().trim() || "general";
-    const flowLabel = escapeHtml(normalizeFlowLabel(flowKey));
     el.innerHTML = [
         '<dl class="node-summary-grid">',
         "<dt>Category path</dt><dd>",
         escapeHtml(node.path),
-        "</dd>",
-        "<dt>Flow</dt><dd>",
-        flowLabel,
         "</dd>",
         "<dt>Sub-categories here</dt><dd>",
         escapeHtml(String(childrenCount)),
@@ -1169,7 +1089,6 @@ function openNodeActionDialog(action, { contextNodeId } = {}) {
               : null;
 
     elements.nodeActionNameInput.value = "";
-    elements.nodeActionFlowInput.value = targetNodeForRenameDelete?.flow || "";
     elements.nodeActionDeleteMode.value = "delete";
 
     if (action === "create_node") {
@@ -1183,26 +1102,21 @@ function openNodeActionDialog(action, { contextNodeId } = {}) {
             elements.nodeActionTitle.textContent = "Create sub-category";
             elements.nodeActionHint.textContent = `Under: ${parentNode.path}`;
             elements.nodeActionNameInput.placeholder = "New sub-category name";
-            elements.nodeActionFlowInput.value = parentNode.flow || selectedFlowTab || "";
-        } else if (selectedFlowTab === "all") {
-            elements.nodeActionTitle.textContent = "Create Top-Level Step";
-            elements.nodeActionHint.textContent =
-                "With \"All flows\" selected, the new step is a root category (no parent). Flow defaults to general if blank.";
-            elements.nodeActionNameInput.placeholder = "Step name";
-            elements.nodeActionFlowInput.value = "";
-        } else {
-            const parentForCreate = selectedNodeId
-                ? findNodeById(categoryTreeData, selectedNodeId)
-                : null;
+        } else if (selectedNodeId) {
+            const parentForCreate = findNodeById(categoryTreeData, selectedNodeId);
             if (!parentForCreate) {
                 pendingNodeContextId = null;
-                setStatus("Select a parent step in this flow first.", "error");
+                setStatus("Select a parent step first.", "error");
                 return;
             }
             elements.nodeActionTitle.textContent = "Create Step";
             elements.nodeActionHint.textContent = `Parent: ${parentForCreate.path}`;
             elements.nodeActionNameInput.placeholder = "Step name";
-            elements.nodeActionFlowInput.value = parentForCreate.flow || selectedFlowTab || "";
+        } else {
+            elements.nodeActionTitle.textContent = "Create Top-Level Step";
+            elements.nodeActionHint.textContent =
+                "No category selected, so the new step is a root category (no parent).";
+            elements.nodeActionNameInput.placeholder = "Step name";
         }
     } else if (action === "rename") {
         if (!targetNodeForRenameDelete) {
@@ -1230,34 +1144,24 @@ function openNodeActionDialog(action, { contextNodeId } = {}) {
 
     const showDeleteControls = action === "delete";
     const nameLabel = elements.nodeActionNameInput.previousElementSibling;
-    const flowLabel = elements.nodeActionFlowInput.previousElementSibling;
     const deleteModeLabel = elements.nodeActionDeleteMode.previousElementSibling;
     elements.nodeActionNameInput.classList.toggle("hidden", showDeleteControls);
     nameLabel?.classList.toggle("hidden", showDeleteControls);
-    elements.nodeActionFlowInput.classList.toggle("hidden", showDeleteControls);
-    flowLabel?.classList.toggle("hidden", showDeleteControls);
     elements.nodeActionDeleteMode.classList.toggle("hidden", !showDeleteControls);
     deleteModeLabel?.classList.toggle("hidden", !showDeleteControls);
     elements.nodeActionDialog.showModal();
-}
-
-function flowFilteredRoots() {
-    if (selectedFlowTab === "all") {
-        return categoryTreeData;
-    }
-    return categoryTreeData.filter((node) => (node.flow || "").toLowerCase() === selectedFlowTab);
 }
 
 function buildExplorerButton(node) {
     const isActive = selectedExplorerPath === node.path ? "active" : "";
     const count = templateCountsByPath[node.path] || 0;
     const menuBtn = canManageCategoryNodes()
-        ? `<button type="button" class="flow-node-menu-btn" aria-label="Actions for ${escapeHtml(node.name)}" title="Category actions" data-node-menu="${node.id}">⋯</button>`
+        ? `<button type="button" class="category-node-menu-btn" aria-label="Actions for ${escapeHtml(node.name)}" title="Category actions" data-node-menu="${node.id}">⋯</button>`
         : "";
     return `
-        <div class="flow-node-row" data-node-row-id="${node.id}">
-            <button type="button" class="flow-node-button ${isActive}" data-node-path="${escapeHtml(node.path)}" data-node-flow="${escapeHtml(node.flow || "general")}">
-                <span class="flow-node-button-label">${escapeHtml(node.name)}</span>
+        <div class="category-node-row" data-node-row-id="${node.id}">
+            <button type="button" class="category-node-button ${isActive}" data-node-path="${escapeHtml(node.path)}">
+                <span class="category-node-button-label">${escapeHtml(node.name)}</span>
                 <span class="node-count-badge">${formatNumber(count)}</span>
             </button>
             ${menuBtn}
@@ -1283,7 +1187,7 @@ function collectCountsByPath(templates) {
 }
 
 function categoryDropdownScope() {
-    const roots = flowFilteredRoots();
+    const roots = categoryTreeData;
     if (!selectedExplorerPath) {
         return [...roots];
     }
@@ -1314,7 +1218,7 @@ function populateCategoryDropdown(desiredValue) {
     select.value = matchedValue ? matchedValue.path : (optionNodes[0]?.path ?? "");
 }
 
-function renderFlowExplorerTree() {
+function renderCategoryExplorerTree() {
     if (!categoryTreeData.length) {
         elements.explorerPrimaryList.innerHTML = '<div class="empty-state">No category tree available.</div>';
         elements.explorerSecondaryList.innerHTML = '<div class="empty-state">No category tree available.</div>';
@@ -1323,7 +1227,7 @@ function renderFlowExplorerTree() {
         return;
     }
 
-    const roots = flowFilteredRoots();
+    const roots = categoryTreeData;
     let primaryNodes = roots;
     let secondaryNodes = [];
     if (!selectedExplorerPath) {
@@ -1352,15 +1256,12 @@ function renderFlowExplorerTree() {
 
     document.querySelectorAll("[data-node-path]").forEach((button) => {
         button.addEventListener("click", async () => {
-            dismissFlowExplorerNotice();
+            dismissExplorerNotice();
             selectedExplorerPath = button.dataset.nodePath || "";
-            selectedExplorerFlow = button.dataset.nodeFlow || "general";
-            selectedFlowTab = selectedExplorerFlow || "all";
             const selectedNode = findNodeByPath(categoryTreeData, selectedExplorerPath);
             selectedNodeId = selectedNode?.id || null;
             renderBreadcrumb(selectedExplorerPath);
-            renderFlowTabs();
-            renderFlowExplorerTree();
+            renderCategoryExplorerTree();
             updateSelectedNodeSummary();
             renderWarningsText();
             setCreateMode();
@@ -1369,19 +1270,17 @@ function renderFlowExplorerTree() {
     });
     populateCategoryDropdown();
     updateSelectedNodeSummary();
-    updateFlowExplorerScope();
     updateExplorerUpButtonState();
 }
 
-async function loadFlowExplorerTree() {
+async function loadCategoryExplorerTree() {
     try {
         categoryTreeData = await request("/templates/categories/tree", { method: "GET" });
         if (selectedNodeId && !findNodeById(categoryTreeData, selectedNodeId)) {
             selectedNodeId = null;
             selectedExplorerPath = "";
         }
-        renderFlowTabs();
-        renderFlowExplorerTree();
+        renderCategoryExplorerTree();
         updateSelectedNodeSummary();
     } catch (error) {
         categoryTreeData = [];
@@ -1389,7 +1288,6 @@ async function loadFlowExplorerTree() {
         const html = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
         elements.explorerPrimaryList.innerHTML = html;
         elements.explorerSecondaryList.innerHTML = html;
-        updateFlowExplorerScope();
         updateExplorerUpButtonState();
     }
 }
@@ -1440,7 +1338,6 @@ function setEditMode(template) {
     elements.templateId.value = String(template.id);
     elements.responseCode.value = template.response_code;
     elements.content.value = template.content;
-    selectedExplorerFlow = template.flow || selectedExplorerFlow;
     populateCategoryDropdown(template.category);
     elements.formMode.textContent = `Edit mode: #${template.id}`;
     elements.updateButton.disabled = false;
@@ -2102,7 +1999,7 @@ function openApp() {
     if (savedLayout) {
         applyUiLayout(savedLayout);
     } else {
-        resetPanelsToFlowLayout();
+        resetPanelsToDefaultLayout();
     }
     if (canAccessEngineeringDashboard()) {
         setCurrentView("engineering-dashboard");
@@ -2284,14 +2181,10 @@ async function loadTemplates() {
         lastLoadedTemplatesForRecentChanges = templates;
         let visibleTemplates = templates;
         collectCountsByPath(templates);
-        renderFlowExplorerTree();
+        renderCategoryExplorerTree();
         if (selectedExplorerPath) {
             visibleTemplates = templates.filter((template) =>
                 (template.category || "").startsWith(selectedExplorerPath),
-            );
-        } else if (selectedFlowTab !== "all") {
-            visibleTemplates = templates.filter(
-                (template) => (template.flow || "").toLowerCase() === selectedFlowTab,
             );
         }
         currentTemplates = visibleTemplates;
@@ -2438,7 +2331,6 @@ async function createTemplate(event) {
 
     const payload = {
         category: (elements.category.value.trim() || selectedExplorerPath || "General"),
-        flow: selectedExplorerFlow,
         language: currentLanguage,
         response_code: elements.responseCode.value.trim(),
         content: elements.content.value,
@@ -2471,7 +2363,6 @@ async function updateTemplate() {
 
     const payload = {
         category: (elements.category.value.trim() || selectedExplorerPath || "General"),
-        flow: selectedExplorerFlow,
         language: currentLanguage,
         response_code: elements.responseCode.value.trim(),
         content: elements.content.value,
@@ -2532,20 +2423,7 @@ async function confirmNodeAction() {
             }
             const params = new URLSearchParams();
             params.set("name", name);
-            const flowVal = elements.nodeActionFlowInput.value.trim();
-            if (flowVal) {
-                params.set("flow", flowVal);
-            }
-            let parentIdForPost = null;
-            if (pendingNodeContextId != null) {
-                parentIdForPost = pendingNodeContextId;
-            } else if (selectedFlowTab !== "all") {
-                parentIdForPost = selectedNodeId;
-            }
-            if (selectedFlowTab !== "all" && parentIdForPost == null) {
-                setStatus("Select a parent step in this flow first.", "error");
-                return;
-            }
+            const parentIdForPost = pendingNodeContextId != null ? pendingNodeContextId : selectedNodeId;
             if (parentIdForPost != null) {
                 params.set("parent_id", String(parentIdForPost));
             }
@@ -2555,9 +2433,7 @@ async function confirmNodeAction() {
             pendingNodeContextId = null;
             selectedNodeId = created.id;
             selectedExplorerPath = created.path;
-            selectedExplorerFlow = created.flow;
-            selectedFlowTab = created.flow || "all";
-            await loadFlowExplorerTree();
+            await loadCategoryExplorerTree();
             renderBreadcrumb(selectedExplorerPath);
             renderWarningsText();
             await loadTemplates();
@@ -2580,16 +2456,10 @@ async function confirmNodeAction() {
             }
             const params = new URLSearchParams();
             params.set("name", name);
-            const flow = elements.nodeActionFlowInput.value.trim();
-            if (flow) {
-                params.set("flow", flow);
-            }
             const updated = await request(`/templates/categories/nodes/${targetNodeId}?${params.toString()}`, { method: "PUT" });
             pendingNodeContextId = null;
             selectedExplorerPath = updated.path;
-            selectedExplorerFlow = updated.flow;
-            selectedFlowTab = updated.flow || "all";
-            await loadFlowExplorerTree();
+            await loadCategoryExplorerTree();
             renderBreadcrumb(selectedExplorerPath);
             renderWarningsText();
             await loadTemplates();
@@ -2611,9 +2481,7 @@ async function confirmNodeAction() {
             pendingNodeContextId = null;
             selectedNodeId = null;
             selectedExplorerPath = "";
-            selectedExplorerFlow = "general";
-            selectedFlowTab = "all";
-            await loadFlowExplorerTree();
+            await loadCategoryExplorerTree();
             renderBreadcrumb("");
             renderWarningsText();
             await loadTemplates();
@@ -2639,7 +2507,7 @@ async function login(event) {
         saveSession({ username: auth.username, role: auth.role, token: auth.token });
         setLoginStatus("Login successful.", "success");
         openApp();
-        await loadFlowExplorerTree();
+        await loadCategoryExplorerTree();
         await loadTemplates();
     } catch (error) {
         setLoginStatus(error.message || "Invalid credentials.", "error");
@@ -2668,7 +2536,7 @@ async function register(event) {
         setLoginStatus("Account created and logged in.", "success");
         elements.registerDialog.close();
         openApp();
-        await loadFlowExplorerTree();
+        await loadCategoryExplorerTree();
         await loadTemplates();
     } catch (error) {
         setRegisterStatus(error.message, "error");
@@ -2780,7 +2648,14 @@ async function importTemplatesFromCsv(event) {
             method: "POST",
             body,
         });
-        const msg = `Import done. Rows: ${result.total_rows}. Created: ${result.created}. Updated: ${result.updated}. Failed: ${result.failed}.`;
+        let msg = `Import done. Rows: ${result.total_rows}. Created: ${result.created}. Updated: ${result.updated}. Failed: ${result.failed}.`;
+        const errors = Array.isArray(result.errors) ? result.errors : [];
+        if (errors.length) {
+            msg += ` ${errors.slice(0, 3).join(" ")}`;
+            if (errors.length > 3) {
+                msg += ` (+${errors.length - 3} more)`;
+            }
+        }
         setStatus(msg, result.failed ? "error" : "success");
         elements.importDialog.close();
         await loadTemplates();
@@ -2840,7 +2715,7 @@ elements.adhdToggleButton.addEventListener("click", () => {
 });
 elements.resetUiLayoutButton.addEventListener("click", () => {
     clearUiLayout();
-    resetPanelsToFlowLayout();
+    resetPanelsToDefaultLayout();
 });
 elements.form.addEventListener("submit", createTemplate);
 elements.updateButton.addEventListener("click", updateTemplate);
@@ -2888,14 +2763,11 @@ elements.warningsUnderlineButton.addEventListener("click", () => applyWarningFor
 elements.warningsRedButton.addEventListener("click", () => applyWarningFormat("foreColor", "#ff2a2a"));
 elements.warningsBulletButton.addEventListener("click", () => applyWarningFormat("insertUnorderedList"));
 elements.clearExplorerButton.addEventListener("click", async () => {
-    dismissFlowExplorerNotice();
+    dismissExplorerNotice();
     selectedExplorerPath = "";
     selectedNodeId = null;
-    selectedFlowTab = "all";
-    selectedExplorerFlow = "general";
     renderBreadcrumb("");
-    renderFlowTabs();
-    renderFlowExplorerTree();
+    renderCategoryExplorerTree();
     updateSelectedNodeSummary();
     renderWarningsText();
     await loadTemplates();
@@ -2904,10 +2776,10 @@ elements.explorerUpButton?.addEventListener("click", async () => {
     if (!selectedExplorerPath) {
         return;
     }
-    dismissFlowExplorerNotice();
+    dismissExplorerNotice();
     selectedExplorerPath = parentCategoryPath(selectedExplorerPath);
     renderBreadcrumb(selectedExplorerPath);
-    renderFlowExplorerTree();
+    renderCategoryExplorerTree();
     renderWarningsText();
     setCreateMode();
     await loadTemplates();
@@ -2983,7 +2855,7 @@ setupKommoRailNav();
 setupExplorerNodeActionMenus();
 if (restoreSession()) {
     openApp();
-    loadFlowExplorerTree();
+    loadCategoryExplorerTree();
     loadTemplates();
 } else {
     openLogin();

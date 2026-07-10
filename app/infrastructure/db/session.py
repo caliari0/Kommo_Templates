@@ -35,7 +35,6 @@ def ensure_message_templates_schema() -> None:
                     "name VARCHAR(100) NOT NULL, "
                     "parent_id INTEGER NULL, "
                     "path VARCHAR(300) NOT NULL UNIQUE, "
-                    "flow VARCHAR(100) NOT NULL DEFAULT 'general', "
                     "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
                     "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
                     "CONSTRAINT uq_category_nodes_parent_name UNIQUE (parent_id, name), "
@@ -49,14 +48,19 @@ def ensure_message_templates_schema() -> None:
             connection.execute(
                 text("CREATE INDEX ix_category_nodes_path ON category_nodes (path)")
             )
+        elif "flow" in {column["name"] for column in inspector.get_columns("category_nodes")}:
+            connection.execute(text("ALTER TABLE category_nodes DROP COLUMN flow"))
 
     if "message_templates" not in table_names:
         return
 
     columns = {column["name"] for column in inspector.get_columns("message_templates")}
-    required_columns = {"category", "language", "flow", "category_id"}
+    required_columns = {"category", "language", "category_id"}
     if required_columns.issubset(columns):
         with engine.begin() as connection:
+            if "flow" in columns:
+                connection.execute(text("DROP INDEX IF EXISTS ix_message_templates_flow"))
+                connection.execute(text("ALTER TABLE message_templates DROP COLUMN flow"))
             if "copy_count" not in columns:
                 connection.execute(
                     text(
@@ -103,7 +107,6 @@ def ensure_message_templates_schema() -> None:
                 "id INTEGER NOT NULL PRIMARY KEY, "
                 "category VARCHAR(100) NOT NULL DEFAULT 'General', "
                 "category_id INTEGER NULL, "
-                "flow VARCHAR(100) NOT NULL DEFAULT 'general', "
                 "language VARCHAR(2) NOT NULL DEFAULT 'en', "
                 "response_code VARCHAR(100) NOT NULL, "
                 "content TEXT NOT NULL, "
@@ -122,11 +125,10 @@ def ensure_message_templates_schema() -> None:
             connection.execute(
                 text(
                     "INSERT INTO message_templates_new "
-                    "(id, category, category_id, flow, language, response_code, content, copy_count, is_outdated, outdated_reported_by, outdated_commentary, created_at, updated_at) "
+                    "(id, category, category_id, language, response_code, content, copy_count, is_outdated, outdated_reported_by, outdated_commentary, created_at, updated_at) "
                     "SELECT id, "
                     "COALESCE(category, 'General') AS category, "
                     "NULL AS category_id, "
-                    "'general' AS flow, "
                     "COALESCE(language, 'en') AS language, "
                     "response_code, content, 0 AS copy_count, 0 AS is_outdated, NULL AS outdated_reported_by, NULL AS outdated_commentary, created_at, updated_at "
                     "FROM message_templates"
@@ -136,11 +138,10 @@ def ensure_message_templates_schema() -> None:
             connection.execute(
                 text(
                     "INSERT INTO message_templates_new "
-                    "(id, category, category_id, flow, language, response_code, content, copy_count, is_outdated, outdated_reported_by, outdated_commentary, created_at, updated_at) "
+                    "(id, category, category_id, language, response_code, content, copy_count, is_outdated, outdated_reported_by, outdated_commentary, created_at, updated_at) "
                     "SELECT id, "
                     "'General' AS category, "
                     "NULL AS category_id, "
-                    "'general' AS flow, "
                     "'en' AS language, "
                     "response_code, content, 0 AS copy_count, 0 AS is_outdated, NULL AS outdated_reported_by, NULL AS outdated_commentary, created_at, updated_at "
                     "FROM message_templates"
@@ -153,9 +154,6 @@ def ensure_message_templates_schema() -> None:
         )
         connection.execute(
             text("CREATE INDEX ix_message_templates_language ON message_templates (language)")
-        )
-        connection.execute(
-            text("CREATE INDEX ix_message_templates_flow ON message_templates (flow)")
         )
         connection.execute(
             text("CREATE INDEX ix_message_templates_category_id ON message_templates (category_id)")

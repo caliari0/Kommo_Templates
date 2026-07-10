@@ -25,14 +25,12 @@ class MessageTemplateService:
     def create(
         self,
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,
     ) -> MessageTemplate:
         self._validate_fields(
             category=category,
-            flow=flow,
             language=language,
             response_code=response_code,
             content=content,
@@ -43,7 +41,6 @@ class MessageTemplateService:
             raise DuplicateResponseCodeError("response_code already exists for this language")
         return self.repository.create(
             category=category.strip(),
-            flow=flow.strip().lower(),
             language=cleaned_language,
             response_code=response_code.strip(),
             content=content,
@@ -77,14 +74,12 @@ class MessageTemplateService:
         self,
         template_id: int,
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,
     ) -> MessageTemplate:
         self._validate_fields(
             category=category,
-            flow=flow,
             language=language,
             response_code=response_code,
             content=content,
@@ -97,7 +92,6 @@ class MessageTemplateService:
         template = self.repository.update(
             template_id=template_id,
             category=category.strip(),
-            flow=flow.strip().lower(),
             language=cleaned_language,
             response_code=response_code.strip(),
             content=content,
@@ -105,6 +99,42 @@ class MessageTemplateService:
         if not template:
             raise TemplateNotFoundError("template not found")
         return template
+
+    def upsert(
+        self,
+        category: str,
+        language: str,
+        response_code: str,
+        content: str,
+    ) -> tuple[MessageTemplate, bool]:
+        """Create a template, or update it in place if response_code+language already exists.
+
+        Returns (template, created) where created is False when an existing row was updated.
+        """
+        self._validate_fields(
+            category=category,
+            language=language,
+            response_code=response_code,
+            content=content,
+        )
+        cleaned_language = self._normalize_language(language)
+        existing = self.repository.get_by_response_code(response_code.strip(), cleaned_language)
+        if existing:
+            template = self.repository.update(
+                template_id=existing.id,
+                category=category.strip(),
+                language=cleaned_language,
+                response_code=response_code.strip(),
+                content=content,
+            )
+            return template, False
+        template = self.repository.create(
+            category=category.strip(),
+            language=cleaned_language,
+            response_code=response_code.strip(),
+            content=content,
+        )
+        return template, True
 
     def delete(self, template_id: int) -> None:
         deleted = self.repository.delete(template_id)
@@ -137,15 +167,12 @@ class MessageTemplateService:
     @staticmethod
     def _validate_fields(
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,
     ) -> None:
         if not category.strip():
             raise ValueError("category cannot be empty")
-        if not flow.strip():
-            raise ValueError("flow cannot be empty")
         if not language.strip():
             raise InvalidLanguageError("language cannot be empty")
         if language.strip().lower() not in MessageTemplateService.ALLOWED_LANGUAGES:

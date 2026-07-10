@@ -7,7 +7,6 @@ class MessageTemplate:
     id: int | None
     category: str
     category_id: int | None
-    flow: str
     language: str
     response_code: str
     content: str

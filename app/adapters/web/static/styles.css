@@ -1011,46 +1011,13 @@ body.dark-theme .template-form-drawer-actions {
     margin-bottom: 12px;
 }
 
-.flow-explorer-module {
+.category-explorer-module {
     display: flex;
     flex-direction: column;
     gap: 0;
 }
 
-.flow-explorer-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--color-border-soft);
-}
-
-.flow-explorer-scope {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px 10px;
-    min-width: 0;
-}
-
-.flow-explorer-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-text-subtle);
-}
-
-.flow-explorer-flow-name {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--color-text);
-    letter-spacing: -0.02em;
-}
-
-.flow-explorer-clear {
+.category-explorer-clear {
     flex-shrink: 0;
     margin: 0;
     font-weight: 600;
@@ -1059,11 +1026,7 @@ body.dark-theme .template-form-drawer-actions {
     box-shadow: none;
 }
 
-.flow-explorer-tabs {
-    margin-bottom: 10px;
-}
-
-.flow-explorer-path-row {
+.category-explorer-path-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1073,7 +1036,7 @@ body.dark-theme .template-form-drawer-actions {
     min-height: 36px;
 }
 
-.flow-explorer-notice {
+.category-explorer-notice {
     flex: 1 1 200px;
     margin: 0;
     min-width: 0;
@@ -1082,37 +1045,14 @@ body.dark-theme .template-form-drawer-actions {
     color: var(--color-text-muted);
 }
 
-.flow-explorer-notice:empty {
+.category-explorer-notice:empty {
     display: none;
 }
 
-.flow-explorer-up {
+.category-explorer-up {
     flex-shrink: 0;
     margin: 0;
     white-space: nowrap;
-}
-
-.flow-tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
-
-.flow-tab {
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 13px;
-    line-height: 1;
-}
-
-.flow-tab.active {
-    border-color: var(--color-primary);
-    color: #fff;
-    background: var(--color-primary);
 }
 
 .breadcrumb-bar {
@@ -1220,14 +1160,14 @@ span.breadcrumb-chip--current {
     padding: 2px;
 }
 
-.flow-node-row {
+.category-node-row {
     display: flex;
     align-items: stretch;
     gap: 6px;
     width: 100%;
 }
 
-.flow-node-button {
+.category-node-button {
     flex: 1 1 auto;
     min-width: 0;
     width: auto;
@@ -1244,12 +1184,12 @@ span.breadcrumb-chip--current {
     margin: 0;
 }
 
-.flow-node-button-label {
+.category-node-button-label {
     min-width: 0;
     overflow-wrap: anywhere;
 }
 
-.flow-node-menu-btn {
+.category-node-menu-btn {
     flex: 0 0 auto;
     width: 36px;
     min-height: 100%;
@@ -1267,13 +1207,13 @@ span.breadcrumb-chip--current {
     box-shadow: none;
 }
 
-.flow-node-menu-btn:hover {
+.category-node-menu-btn:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
     background: var(--color-primary-soft);
 }
 
-.flow-node-menu-btn:focus-visible {
+.category-node-menu-btn:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
@@ -1287,7 +1227,7 @@ span.breadcrumb-chip--current {
     white-space: nowrap;
 }
 
-.flow-node-button.active {
+.category-node-button.active {
     border-color: var(--color-primary);
     background: var(--color-primary-soft);
 }
@@ -1605,7 +1545,7 @@ button.breadcrumb-chip.breadcrumb-chip--current:hover {
     color: var(--color-primary);
 }
 
-button.flow-explorer-clear {
+button.category-explorer-clear {
     background: transparent;
     color: var(--color-primary);
     padding: 4px 8px;
@@ -1614,12 +1554,12 @@ button.flow-explorer-clear {
     transform: none;
 }
 
-button.flow-explorer-clear:hover:not(:disabled) {
+button.category-explorer-clear:hover:not(:disabled) {
     background: rgba(20, 18, 61, 0.08);
     color: var(--color-primary-hover);
 }
 
-body.dark-theme button.flow-explorer-clear:hover:not(:disabled) {
+body.dark-theme button.category-explorer-clear:hover:not(:disabled) {
     background: rgba(109, 106, 232, 0.15);
 }
 

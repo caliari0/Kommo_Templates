@@ -15,7 +15,6 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
     def create(
         self,
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,
@@ -24,7 +23,6 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
         model = MessageTemplateModel(
             category=category,
             category_id=category_node.id if category_node else None,
-            flow=flow,
             language=language,
             response_code=response_code,
             content=content,
@@ -83,7 +81,6 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
         self,
         template_id: int,
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,
@@ -95,7 +92,6 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
         category_node = self.db.scalar(select(CategoryNodeModel).where(CategoryNodeModel.path == category))
         model.category = category
         model.category_id = category_node.id if category_node else None
-        model.flow = flow
         model.language = language
         model.response_code = response_code
         model.content = content
@@ -157,7 +153,6 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
             id=model.id,
             category=model.category,
             category_id=model.category_id,
-            flow=model.flow,
             language=model.language,
             response_code=model.response_code,
             content=model.content,

@@ -1,13 +1,13 @@
-# Support Flows Data Structure
+# Category Data Structure
 
-This file gives a practical overview of how support flows and templates are organized.
+This file gives a practical overview of how support categories and templates are organized.
 
 Quick version:
 
 - categories are a 3-level tree
 - templates are attached to specific nodes in that tree
 - each template exists per language (`en`, `es`, `pt`)
-- warnings are contextual in the UI (per selected node/flow)
+- warnings are contextual in the UI (per selected category node)
 
 ## Big Picture
 
@@ -23,13 +23,12 @@ Templates live at the scenario level, so they are ready to use for real conversa
 
 The current seeded structure follows:
 
-- **5 parent nodes**
-- each parent has **3 children**
-- each child has **5 grandchildren**
+- **25 parent nodes**
+- each parent has **5 children** (one per channel: Email, WhatsApp, Phone, SMS, Chat)
 
 So total category nodes are:
 
-- `5 + (5*3) + (5*3*5) = 95`
+- `25 + (25*5) = 150`
 
 ## Main Tables
 
@@ -43,7 +42,6 @@ Core columns:
 - `name`
 - `parent_id` (nullable, points to parent node)
 - `path` (materialized path like `Parent > Child > Grandchild`)
-- `flow` (flow key, e.g. `order_delivery`)
 
 Why `path` is nice:
 
@@ -60,7 +58,6 @@ Core columns:
 - `id`
 - `category` (path text)
 - `category_id` (foreign key to `category_nodes.id`)
-- `flow`
 - `language` (`en`, `es`, `pt`)
 - `response_code`
 - `content`
@@ -71,29 +68,26 @@ Current response-code rule:
 - unique inside each language
 - lowercase words, concatenated
 
-## How Flows Connect to Templates
+## How Categories Connect to Templates
 
 Every template carries:
 
 - the exact category path
 - the category node id
-- the flow id
 
-This means the UI can filter in multiple ways:
+This means the UI can filter by:
 
-- by selected node path
-- by selected flow tab
-- by language
+- selected node path
+- language
 
 ## Example Mental Model
 
 Think of one branch like this:
 
-- `Order and Delivery Support`
-  - `Order Status`
-    - `In Transit`
+- `Order Status`
+  - `Email`
 
-For that `In Transit` scenario, you can have templates such as:
+For that `Email` scenario, you can have templates such as:
 
 - delivery update
 - shipping delay apology
@@ -107,17 +101,16 @@ And each one is available in:
 
 ## UI Behavior Tied to This Data
 
-The explorer loads the category tree and lets users navigate by flow and node.
+The Category Explorer loads the category tree and lets users navigate by node, with breadcrumbs and an "Up one level" control.
 
-Warnings are contextual, so the warning block can change when the user changes selected node/flow.  
-That keeps guidance specific to the case being handled.
+Warnings are contextual, so the warning block can change when the user changes the selected node. That keeps guidance specific to the case being handled.
 
 ### Creating nodes in the UI (manager/developer)
 
-The **New node** action follows the active flow tab:
+The **New node** action follows the current selection:
 
-- **All flows** — creates a **top-level** category node (no parent). Optional flow in the dialog defaults to `general` on the server when omitted.
-- A **specific flow** tab — creates a **child** under the **currently selected** node in the explorer. The user must select a parent node in that flow first.
+- No node selected — creates a **top-level** category node (no parent).
+- A node selected in the explorer — creates a **child** under that node.
 
 **Rename** and **Delete** apply to the selected node, including top-level roots.
 

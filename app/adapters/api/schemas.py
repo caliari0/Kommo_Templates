@@ -11,13 +11,6 @@ class MessageTemplateCreate(BaseModel):
         description="Category used to organize templates.",
         examples=["Onboarding"],
     )
-    flow: str = Field(
-        default="general",
-        min_length=1,
-        max_length=100,
-        description="Flow associated with this category/template.",
-        examples=["qualification"],
-    )
     language: str = Field(
         default="en",
         min_length=2,
@@ -41,7 +34,6 @@ class MessageTemplateCreate(BaseModel):
         json_schema_extra={
             "example": {
                 "category": "Onboarding",
-                "flow": "qualification",
                 "language": "en",
                 "response_code": "WELCOME_001",
                 "content": "Hello {name},\n\nWelcome to our system.\n\nRegards,\nSupport Team",
@@ -57,13 +49,6 @@ class MessageTemplateUpdate(BaseModel):
         max_length=100,
         description="Category used to organize templates.",
         examples=["Onboarding"],
-    )
-    flow: str = Field(
-        default="general",
-        min_length=1,
-        max_length=100,
-        description="Flow associated with this category/template.",
-        examples=["qualification"],
     )
     language: str = Field(
         default="en",
@@ -88,7 +73,6 @@ class MessageTemplateUpdate(BaseModel):
         json_schema_extra={
             "example": {
                 "category": "Onboarding",
-                "flow": "qualification",
                 "language": "en",
                 "response_code": "WELCOME_001",
                 "content": "Hello {name},\n\nYour request has been updated.\n\nRegards,\nSupport Team",
@@ -103,7 +87,6 @@ class MessageTemplateResponse(BaseModel):
     id: int
     category: str
     category_id: int | None = None
-    flow: str
     language: str
     response_code: str
     content: str

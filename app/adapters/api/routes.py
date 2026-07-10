@@ -1,6 +1,8 @@
+import csv
+import io
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Header, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 
@@ -43,7 +45,6 @@ def _build_category_tree(nodes: list[CategoryNodeModel]) -> list[dict[str, objec
             "name": node.name,
             "path": node.path,
             "parent_id": node.parent_id,
-            "flow": node.flow,
             "children": [],
         }
     for node in nodes:
@@ -78,7 +79,6 @@ def create_template(
     try:
         template = service.create(
             category=payload.category,
-            flow=payload.flow,
             language=payload.language,
             response_code=payload.response_code,
             content=payload.content,
@@ -151,6 +151,80 @@ def search_templates(
         return [MessageTemplateResponse.model_validate(template) for template in templates]
     except InvalidLanguageError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/import/csv",
+    summary="Bulk create/update templates from a CSV file",
+    dependencies=[Depends(require_roles(Role.manager, Role.developer))],
+)
+async def import_templates_csv(
+    service: Annotated[MessageTemplateService, Depends(get_service)],
+    file: Annotated[UploadFile, File(description="CSV file with response_code/content columns")],
+    x_language: Annotated[str | None, Header(alias="X-Language")] = None,
+) -> dict[str, object]:
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="CSV file must be UTF-8 encoded.") from exc
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV file is empty or missing a header row.")
+
+    field_lookup = {(name or "").strip().lower(): name for name in reader.fieldnames}
+    if "response_code" not in field_lookup or "content" not in field_lookup:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV must include 'response_code' and 'content' columns.",
+        )
+
+    default_language = resolve_language(None, x_language)
+
+    total_rows = 0
+    created = 0
+    updated = 0
+    failed = 0
+    errors: list[str] = []
+
+    for row in reader:
+        total_rows += 1
+        response_code = (row.get(field_lookup["response_code"]) or "").strip()
+        content = row.get(field_lookup["content"]) or ""
+        category_raw = row.get(field_lookup.get("category", "")) if "category" in field_lookup else None
+        category = (category_raw or "").strip() or "newtemp"
+        language_raw = row.get(field_lookup.get("language", "")) if "language" in field_lookup else None
+        language = (language_raw or "").strip().lower() or default_language
+
+        if not response_code or not content.strip():
+            failed += 1
+            errors.append(f"Row {total_rows}: response_code and content are required.")
+            continue
+
+        try:
+            _, was_created = service.upsert(
+                category=category,
+                language=language,
+                response_code=response_code,
+                content=content,
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+        except (InvalidLanguageError, ValueError) as exc:
+            failed += 1
+            errors.append(f"Row {total_rows}: {exc}")
+
+    return {
+        "status": "ok",
+        "total_rows": total_rows,
+        "created": created,
+        "updated": updated,
+        "failed": failed,
+        "errors": errors[:20],
+    }
 
 
 @router.get(
@@ -240,7 +314,6 @@ def update_template(
         template = service.update(
             template_id=template_id,
             category=payload.category,
-            flow=payload.flow,
             language=payload.language,
             response_code=payload.response_code,
             content=payload.content,
@@ -352,7 +425,6 @@ def get_category_breadcrumb(
     parts = [part.strip() for part in node.path.split(">") if part.strip()]
     return {
         "category_id": node.id,
-        "flow": node.flow,
         "path": node.path,
         "breadcrumb": parts,
     }
@@ -360,14 +432,13 @@ def get_category_breadcrumb(
 
 @router.post(
     "/categories/nodes",
-    summary="Create a category/flow node",
+    summary="Create a category node",
     dependencies=[Depends(require_roles(Role.manager, Role.developer))],
 )
 def create_category_node(
     db: Annotated[Session, Depends(get_db)],
     name: Annotated[str, Query(min_length=1, max_length=100, description="Node name")],
     parent_id: Annotated[int | None, Query(description="Optional parent node id")] = None,
-    flow: Annotated[str | None, Query(min_length=1, max_length=100, description="Flow key")] = None,
 ) -> dict[str, object]:
     cleaned_name = name.strip()
     if not cleaned_name:
@@ -378,10 +449,8 @@ def create_category_node(
         parent = db.get(CategoryNodeModel, parent_id)
         if not parent:
             raise HTTPException(status_code=404, detail="parent node not found")
-        node_flow = (flow or parent.flow).strip().lower()
         node_path = f"{parent.path} > {cleaned_name}"
     else:
-        node_flow = (flow or "general").strip().lower()
         node_path = cleaned_name
 
     existing = db.scalar(select(CategoryNodeModel).where(CategoryNodeModel.path == node_path))
@@ -392,7 +461,6 @@ def create_category_node(
         name=cleaned_name,
         parent_id=parent.id if parent else None,
         path=node_path,
-        flow=node_flow,
     )
     db.add(node)
     db.commit()
@@ -402,34 +470,30 @@ def create_category_node(
         "name": node.name,
         "parent_id": node.parent_id,
         "path": node.path,
-        "flow": node.flow,
     }
 
 
 @router.put(
     "/categories/nodes/{node_id}",
-    summary="Rename/update a category/flow node",
+    summary="Rename/update a category node",
     dependencies=[Depends(require_roles(Role.manager, Role.developer))],
 )
 def update_category_node(
     node_id: int,
     db: Annotated[Session, Depends(get_db)],
     name: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
-    flow: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
 ) -> dict[str, object]:
     node = db.get(CategoryNodeModel, node_id)
     if not node:
         raise HTTPException(status_code=404, detail="node not found")
 
     old_path = node.path
-    old_flow = node.flow
     cleaned_name = name.strip() if name is not None else node.name
     if not cleaned_name:
         raise HTTPException(status_code=400, detail="name cannot be empty")
 
     parent = db.get(CategoryNodeModel, node.parent_id) if node.parent_id else None
     new_path = f"{parent.path} > {cleaned_name}" if parent else cleaned_name
-    new_flow = (flow.strip().lower() if flow is not None else node.flow)
 
     if new_path != old_path:
         collision = db.scalar(
@@ -443,15 +507,12 @@ def update_category_node(
 
     node.name = cleaned_name
     node.path = new_path
-    node.flow = new_flow
 
     descendants = db.scalars(
         select(CategoryNodeModel).where(CategoryNodeModel.path.like(f"{old_path} > %"))
     ).all()
     for descendant in descendants:
         descendant.path = descendant.path.replace(f"{old_path} > ", f"{new_path} > ", 1)
-        if flow is not None and descendant.flow == old_flow:
-            descendant.flow = new_flow
 
     templates = db.scalars(
         select(MessageTemplateModel).where(
@@ -460,16 +521,12 @@ def update_category_node(
     ).all()
     for template in templates:
         template.category = new_path
-        if flow is not None and template.flow == old_flow:
-            template.flow = new_flow
 
     descendant_templates = db.scalars(
         select(MessageTemplateModel).where(MessageTemplateModel.category.like(f"{old_path} > %"))
     ).all()
     for template in descendant_templates:
         template.category = template.category.replace(f"{old_path} > ", f"{new_path} > ", 1)
-        if flow is not None and template.flow == old_flow:
-            template.flow = new_flow
 
     db.commit()
     db.refresh(node)
@@ -478,13 +535,12 @@ def update_category_node(
         "name": node.name,
         "parent_id": node.parent_id,
         "path": node.path,
-        "flow": node.flow,
     }
 
 
 @router.delete(
     "/categories/nodes/{node_id}",
-    summary="Delete a category/flow node subtree",
+    summary="Delete a category node subtree",
     dependencies=[Depends(require_roles(Role.manager, Role.developer))],
 )
 def delete_category_node(
@@ -545,7 +601,7 @@ def delete_category_node(
 
 @router.post(
     "/admin/reset-database",
-    summary="Reset DB and seed generic category-flow templates",
+    summary="Reset DB and seed generic category templates",
     dependencies=[Depends(require_roles(Role.manager, Role.developer))],
 )
 def reset_database(
@@ -555,34 +611,32 @@ def reset_database(
     db.query(CategoryNodeModel).delete()
     db.commit()
 
-    categories_by_flow = {
-        "intake": ["Incoming Lead", "Web Contact", "Event Contact", "Cold Outreach", "Referral"],
-        "qualification": ["Discovery", "Needs Mapping", "Budget Check", "Decision Mapping", "Risk Assessment"],
-        "follow_up": ["First Follow-up", "Second Follow-up", "No Response", "Re-engagement", "Nurture"],
-        "conversion": ["Proposal", "Negotiation", "Closing", "Contract", "Handover"],
-        "retention": ["Onboarding", "Adoption", "Renewal", "Expansion", "Advocacy"],
-    }
+    root_categories = [
+        "Incoming Lead", "Web Contact", "Event Contact", "Cold Outreach", "Referral",
+        "Discovery", "Needs Mapping", "Budget Check", "Decision Mapping", "Risk Assessment",
+        "First Follow-up", "Second Follow-up", "No Response", "Re-engagement", "Nurture",
+        "Proposal", "Negotiation", "Closing", "Contract", "Handover",
+        "Onboarding", "Adoption", "Renewal", "Expansion", "Advocacy",
+    ]
     channel_nodes = ["Email", "WhatsApp", "Phone", "SMS", "Chat"]
 
     created_nodes: list[CategoryNodeModel] = []
-    for flow, roots in categories_by_flow.items():
-        for root_name in roots:
-            root_path = root_name
-            root = CategoryNodeModel(name=root_name, parent_id=None, path=root_path, flow=flow)
-            db.add(root)
+    for root_name in root_categories:
+        root_path = root_name
+        root = CategoryNodeModel(name=root_name, parent_id=None, path=root_path)
+        db.add(root)
+        db.flush()
+        created_nodes.append(root)
+        for channel in channel_nodes:
+            child_path = f"{root_path} > {channel}"
+            child = CategoryNodeModel(
+                name=channel,
+                parent_id=root.id,
+                path=child_path,
+            )
+            db.add(child)
             db.flush()
-            created_nodes.append(root)
-            for channel in channel_nodes:
-                child_path = f"{root_path} > {channel}"
-                child = CategoryNodeModel(
-                    name=channel,
-                    parent_id=root.id,
-                    path=child_path,
-                    flow=flow,
-                )
-                db.add(child)
-                db.flush()
-                created_nodes.append(child)
+            created_nodes.append(child)
     db.commit()
 
     languages = ["en", "es", "pt"]
@@ -594,12 +648,11 @@ def reset_database(
             template = MessageTemplateModel(
                 category=node.path,
                 category_id=node.id,
-                flow=node.flow,
                 language=language,
                 response_code=f"TEMPLATE_{language.upper()}_{index + 1:03}",
                 content=(
                     f"[{language.upper()}] Generic template #{index + 1}. "
-                    f"Category: {node.path}. Flow: {node.flow}. "
+                    f"Category: {node.path}. "
                     "Use this for endpoint and UI tests."
                 ),
             )

@@ -10,7 +10,6 @@ class MessageTemplateRepository(ABC):
     def create(
         self,
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,
@@ -43,7 +42,6 @@ class MessageTemplateRepository(ABC):
         self,
         template_id: int,
         category: str,
-        flow: str,
         language: str,
         response_code: str,
         content: str,

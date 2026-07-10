@@ -2,7 +2,7 @@
 
 This is a FastAPI CRUD app for reusable message templates.
 
-Current version: `v3.3.0`
+Current version: `v3.5.0`
 
 Main components:
 
@@ -55,6 +55,7 @@ Business rules live here, for example:
 - language must be one of `en`, `es`, `pt`
 - required fields cannot be blank
 - missing ids raise `TemplateNotFoundError`
+- `upsert(...)` creates a template or updates the existing one when `response_code`+`language` already exists (used by the CSV import endpoint), returning `(template, created)`
 
 This layer does not know about FastAPI or SQLAlchemy directly.
 
@@ -90,10 +91,10 @@ UI behavior highlights:
 - `manager`: Business Dashboard + Workspace
 - `developer`: Business Dashboard + Engineering Dashboard + Workspace
 - `user`: Workspace only
-- Flow Explorer: flow tabs, chip breadcrumbs, path notice when the flow tab invalidates the path, **Up one level**, two-column category navigation, template search
+- Category Explorer: chip breadcrumbs, **Up one level**, **Clear path**, two-column category navigation, template search
 - Templates panel: list scoped to selection; per-card **Edit** / **Copy**, outdated **Report/Clear**, copy counter; **Edit** opens a modal **drawer** for the form
-- Flow Node Management (manager/developer): **New node** creates a root when the flow tab is **All flows**, or a child under the selected node when a specific flow tab is active; **Rename** / **Delete** on the selected node; per-row **⋯** menu and **right-click** for **Add sub-category here** (parent = that row), **Rename**, **Delete** without prior selection
-- Contextual warnings (per node/flow), editable when permitted
+- Category Node Management (manager/developer): **New node** creates a child under the selected node, or a root if nothing is selected; **Rename** / **Delete** on the selected node; per-row **⋯** menu and **right-click** for **Add sub-category here** (parent = that row), **Rename**, **Delete** without prior selection
+- Contextual warnings (per category node), editable when permitted
 - Reports panel (manager/developer): grouped outdated reports with commentary, quick open-to-template, and mark-reviewed; the reporting username comes from the authenticated session, not client input
 - Recent changes panel (all users): templates updated since each user's last session, with mark-as-seen and open-to-template
 - Login screen supports **Create account**; self-registration allows `user`, `manager`, or `developer` roles
@@ -126,6 +127,7 @@ Main endpoints:
 - `POST /templates`
 - `GET /templates`
 - `GET /templates/search`
+- `POST /templates/import/csv` (manager/developer; multipart `file` upload, upserts by `response_code`+`language`, defaults `category=newtemp`/`language=X-Language`)
 - `GET /templates/{id}`
 - `PUT /templates/{id}`
 - `DELETE /templates/{id}`

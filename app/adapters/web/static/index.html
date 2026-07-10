@@ -69,7 +69,7 @@
                 <img class="header-logo" src="/static/header-logo.png" alt="Brand logo">
                 <div>
                 <h1>Kommo Templates Algorithm</h1>
-                <p>CRUD for message templates (v3.3.0)</p>
+                <p>CRUD for message templates (v3.5.0)</p>
                 </div>
             </div>
             <div class="header-links">
@@ -192,19 +192,12 @@
         <section id="searchPanel" class="panel editable-panel" tabindex="-1">
             <h2>Find templates</h2>
             <div id="explorerShell" class="explorer-shell">
-                <div class="flow-explorer-module">
-                    <div class="flow-explorer-head">
-                        <div class="flow-explorer-scope" aria-live="polite">
-                            <span class="flow-explorer-label">Flow</span>
-                            <span id="flowExplorerScopeText" class="flow-explorer-flow-name">All flows</span>
-                        </div>
-                        <button id="clearExplorerButton" type="button" class="flow-explorer-clear">Clear path &amp; flow</button>
-                    </div>
-                    <div id="flowTabs" class="flow-tabs flow-explorer-tabs" aria-label="Flow filter"></div>
+                <div class="category-explorer-module">
                     <div id="breadcrumbBar" class="breadcrumb-bar breadcrumb-bar--chips" role="navigation" aria-label="Category path"></div>
-                    <div class="flow-explorer-path-row">
-                        <div id="flowExplorerNotice" class="flow-explorer-notice" role="status" aria-live="polite"></div>
-                        <button id="explorerUpButton" type="button" class="secondary flow-explorer-up" disabled>Up one level</button>
+                    <div class="category-explorer-path-row">
+                        <div id="explorerNotice" class="category-explorer-notice" role="status" aria-live="polite"></div>
+                        <button id="explorerUpButton" type="button" class="secondary category-explorer-up" disabled>Up one level</button>
+                        <button id="clearExplorerButton" type="button" class="category-explorer-clear">Clear path</button>
                     </div>
                 </div>
                 <div class="explorer-lists">
@@ -347,8 +340,6 @@
             <p id="nodeActionHint" class="node-action-hint"></p>
             <label for="nodeActionNameInput">Name</label>
             <input id="nodeActionNameInput" type="text" maxlength="100" placeholder="Step name">
-            <label for="nodeActionFlowInput">Flow (optional)</label>
-            <input id="nodeActionFlowInput" type="text" maxlength="100" placeholder="Flow key">
             <label for="nodeActionDeleteMode">Delete mode</label>
             <select id="nodeActionDeleteMode">
                 <option value="delete">Delete subtree templates</option>
@@ -413,7 +404,7 @@
     <dialog id="importDialog" class="node-action-dialog">
         <form id="importForm" method="dialog" class="node-action-form">
             <h3>Import templates from CSV</h3>
-            <p class="node-action-hint">Defaults when omitted: category=newtemp, flow=newtemp, language=current UI language.</p>
+            <p class="node-action-hint">Required columns: response_code, content. Optional: category (defaults to newtemp), language (defaults to current UI language). Matching response_code + language updates the existing template instead of creating a duplicate.</p>
             <label for="importFileInput">CSV file</label>
             <input id="importFileInput" type="file" accept=".csv,text/csv" required>
             <div class="button-row">

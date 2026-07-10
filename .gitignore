@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 .env
 app.db
+app.db.bak*
 
 # Local dev / tunnel logs
 uvicorn.out.log

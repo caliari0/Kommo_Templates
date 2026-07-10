@@ -8,7 +8,7 @@ This project is organized around a clean FastAPI CRUD flow with:
 - language-aware templates
 - SQLite persistence
 
-Current version: `v3.3.0`
+Current version: `v3.5.0`
 
 ## What This App Does
 
@@ -109,7 +109,7 @@ The `/ui` login uses database-backed accounts.
 - `manager` and `developer` users can also create, edit, and delete other accounts from the **User accounts** panel on the Business Dashboard.
 - Default seeded accounts are preserved for continuity: `manager`, `developer`, and `user` (password `kommotemplates0`). These three are protected: they can never be deleted, and their username/role/active status can't be edited (only their password can be reset).
 
-## Web UI (Flow Explorer and Templates)
+## Web UI (Category Explorer and Templates)
 
 After login, the workspace uses a **Kommo-style** shell with role-based dashboard access. The left navigation rail shows only what your role can use (no unnecessary scrollbar).
 
@@ -117,19 +117,17 @@ After login, the workspace uses a **Kommo-style** shell with role-based dashboar
 - `developer`: **Business Dashboard** + **Engineering Dashboard** + Workspace
 - `user`: Workspace only
 
-The **Find templates** panel (rail: “Find templates and categories”) includes a **Flow Explorer**: flow tabs, chip-style breadcrumbs, **Up one level** and **Clear path & flow**, two columns (**Categories at this level** / **Sub-categories (next step)**), and optional template search. Switching to a flow tab that does not match the current path clears the path and shows a short inline notice.
+The **Find templates** panel (rail: “Find templates and categories”) includes a category-tree explorer: chip-style breadcrumbs, **Up one level** and **Clear path**, two columns (**Categories at this level** / **Sub-categories (next step)**), and optional template search.
 
 **Templates** lists templates for the current scope; each card has **Edit** and **Copy** (managers/developers), **Report/Clear** for outdated feedback, and a **copy counter**. **Edit** opens the template form in a **drawer** (`<dialog>`) so the list stays in view.
 
-**Flow Node Management** (shown for `manager` and `developer`):
+**Category Node Management** (shown for `manager` and `developer`):
 
-- **New node** — behavior depends on the selected flow tab:
-  - **All flows** — creates a **top-level** category node (no parent).
-  - A **specific flow** tab — creates a **child** of the currently **selected** node in the explorer (select a parent in that flow first).
+- **New node** — creates a **child** of the currently **selected** category, or a **top-level** node (no parent) if nothing is selected.
 - **Rename** and **Delete** apply to the selected node (including top-level roots).
-- **⋯** on each category row or **right-click** the row opens the same actions: **Add sub-category here** (always uses that row as `parent_id`, including under **All flows**), **Rename…**, **Delete subtree…** — so you can manage nodes without selecting first.
+- **⋯** on each category row or **right-click** the row opens the same actions: **Add sub-category here** (uses that row as `parent_id`), **Rename…**, **Delete subtree…** — so you can manage nodes without selecting first.
 
-Contextual **warnings** can be edited per node or flow when the user has permission.
+Contextual **warnings** can be edited per category node when the user has permission.
 
 **Business Dashboard** (`manager` + `developer`) focuses on operational outcomes:
 
@@ -177,6 +175,7 @@ There is also a small secret button hidden in the interface for curious users to
 - `GET /templates`
 - `GET /templates?language=en`
 - `GET /templates/search?q=welcome&language=es`
+- `POST /templates/import/csv` (manager/developer only; bulk create/update from a CSV file, see below)
 - `GET /templates/{id}`
 - `PUT /templates/{id}`
 - `DELETE /templates/{id}`
@@ -214,6 +213,22 @@ There is also a small secret button hidden in the interface for curious users to
   "content": "Hello {name},\n\nWelcome to our system.\n\nRegards,\nSupport Team"
 }
 ```
+
+## CSV Import Format
+
+`POST /templates/import/csv` (manager/developer only, multipart file upload, field name `file`) accepts a CSV with a header row:
+
+```csv
+response_code,content,category,language
+WELCOME_001,"Hello {name}, welcome!",Onboarding,en
+FOLLOWUP_001,"Just checking in.",,es
+```
+
+- `response_code` and `content` are required.
+- `category` is optional; defaults to `newtemp` when blank or the column is omitted.
+- `language` is optional; defaults to the current UI language (`X-Language` header) when blank or the column is omitted.
+- A row whose `response_code` + `language` already matches an existing template **updates** that template instead of creating a duplicate (upsert).
+- The response reports `total_rows`, `created`, `updated`, `failed`, and up to 20 row-level `errors`.
 
 ## Project Structure
 

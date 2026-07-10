@@ -14,7 +14,6 @@ class CategoryNodeModel(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("category_nodes.id"), nullable=True, index=True)
     path: Mapped[str] = mapped_column(String(300), nullable=False, unique=True, index=True)
-    flow: Mapped[str] = mapped_column(String(100), nullable=False, default="general")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -66,7 +65,6 @@ class MessageTemplateModel(Base):
         index=True,
         nullable=True,
     )
-    flow: Mapped[str] = mapped_column(String(100), index=True, nullable=False, default="general")
     language: Mapped[str] = mapped_column(String(2), index=True, nullable=False, default="en")
     response_code: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
