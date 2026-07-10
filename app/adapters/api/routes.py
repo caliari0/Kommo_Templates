@@ -17,7 +17,7 @@ from app.application.use_cases.message_template_service import (
     TemplateNotFoundError,
 )
 from app.infrastructure.db.session import get_db
-from app.infrastructure.db.models import CategoryNodeModel, MessageTemplateModel
+from app.infrastructure.db.models import CategoryNodeModel, MessageTemplateModel, TemplateCopyEventModel
 from app.infrastructure.repositories.sqlalchemy_message_template_repository import (
     SqlAlchemyMessageTemplateRepository,
 )
@@ -260,17 +260,24 @@ def update_template(
     "/{template_id}/copied",
     response_model=MessageTemplateResponse,
     summary="Record that a template's content was copied",
-    dependencies=[Depends(require_roles(Role.user, Role.manager, Role.developer))],
 )
 def mark_template_copied(
     template_id: int,
     service: Annotated[MessageTemplateService, Depends(get_service)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[
+        CurrentUser,
+        Depends(require_roles(Role.user, Role.manager, Role.developer)),
+    ],
 ) -> MessageTemplateResponse:
     try:
         template = service.increment_copy_count(template_id)
-        return MessageTemplateResponse.model_validate(template)
     except TemplateNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    db.add(TemplateCopyEventModel(template_id=template_id, username=current_user.username))
+    db.commit()
+    return MessageTemplateResponse.model_validate(template)
 
 
 @router.patch(

@@ -296,6 +296,17 @@ body.adhd-mode {
     padding: 16px;
 }
 
+.dashboard-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.dashboard-panel-head h3 {
+    margin: 0;
+}
+
 .dashboard-panel:nth-child(1),
 .dashboard-panel:nth-child(2),
 .dashboard-panel:nth-child(3),

@@ -69,7 +69,7 @@
                 <img class="header-logo" src="/static/header-logo.png" alt="Brand logo">
                 <div>
                 <h1>Kommo Templates Algorithm</h1>
-                <p>CRUD for message templates (v3.1.2)</p>
+                <p>CRUD for message templates (v3.2.0)</p>
                 </div>
             </div>
             <div class="header-links">
@@ -106,7 +106,14 @@
                     <div id="dashboardTemplateStats" class="dashboard-stats"></div>
                 </section>
                 <section class="panel dashboard-panel">
-                    <h3>Top active users (60m)</h3>
+                    <div class="dashboard-panel-head">
+                        <h3>Top active users</h3>
+                        <select id="dashboardTopUsersWindow" aria-label="Time range">
+                            <option value="hour">Last hour</option>
+                            <option value="day" selected>Last day</option>
+                            <option value="month">Last month</option>
+                        </select>
+                    </div>
                     <div id="dashboardTopUsers" class="metrics-endpoints"></div>
                 </section>
                 <section class="panel dashboard-panel">

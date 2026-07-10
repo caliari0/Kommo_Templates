@@ -2,7 +2,7 @@
 
 This is a FastAPI CRUD app for reusable message templates.
 
-Current version: `v3.1.2`
+Current version: `v3.2.0`
 
 Main components:
 
@@ -44,8 +44,8 @@ Application entrypoint and wiring.
 
 Core concepts without framework details.
 
-- `entities/message_template.py`: template entity dataclass
-- `ports/message_template_repository.py`: repository interface/contract
+- `entities/message_template.py`: template entity dataclass, including `copy_count`, `is_outdated`, `outdated_reported_by`, `outdated_commentary` (mapped end-to-end from the DB, so list/search/get responses reflect real state)
+- `ports/message_template_repository.py`: repository interface/contract, including `increment_copy_count`, `report_outdated`, `clear_outdated`
 
 ### `app/application/use_cases/message_template_service.py`
 
@@ -63,7 +63,7 @@ This layer does not know about FastAPI or SQLAlchemy directly.
 Database and persistence implementation.
 
 - `db/session.py`: SQLAlchemy engine/session + startup schema check
-- `db/models.py`: ORM model + unique constraint (`response_code`, `language`)
+- `db/models.py`: `MessageTemplateModel` (unique constraint on `response_code`, `language`; `copy_count`, `is_outdated`, `outdated_reported_by`, `outdated_commentary`), `TemplateCopyEventModel` (one row per copy action: `template_id`, `username`, `created_at`), `UserModel`, `CategoryNodeModel`
 - `repositories/sqlalchemy_message_template_repository.py`: concrete repository implementation
 
 ### `app/adapters/api`
@@ -94,10 +94,10 @@ UI behavior highlights:
 - Templates panel: list scoped to selection; per-card **Edit** / **Copy**, outdated **Report/Clear**, copy counter; **Edit** opens a modal **drawer** for the form
 - Flow Node Management (manager/developer): **New node** creates a root when the flow tab is **All flows**, or a child under the selected node when a specific flow tab is active; **Rename** / **Delete** on the selected node; per-row **⋯** menu and **right-click** for **Add sub-category here** (parent = that row), **Rename**, **Delete** without prior selection
 - Contextual warnings (per node/flow), editable when permitted
-- Reports panel (manager/developer): grouped outdated reports with commentary, quick open-to-template, and mark-reviewed
+- Reports panel (manager/developer): grouped outdated reports with commentary, quick open-to-template, and mark-reviewed; the reporting username comes from the authenticated session, not client input
 - Recent changes panel (all users): templates updated since each user's last session, with mark-as-seen and open-to-template
 - Login screen supports **Create account**; self-registration allows `user`, `manager`, or `developer` roles
-- Business Dashboard includes operational metrics for templates and user activity
+- Business Dashboard includes operational metrics for templates and user activity, including a "Top active users" panel ranked by templates copied with an **hour/day/month** window selector
 - Engineering Dashboard includes technical diagnostics (latency percentiles, error rate, status breakdown, and slow endpoints), plus integrated usage metrics reporting (dashboard data refreshes on a fixed interval)
 - Account administration is embedded in Engineering Dashboard and hides seeded default accounts from the visible list
 - Recent changes timestamps and header clock are timezone-aware for each user
@@ -128,11 +128,11 @@ Main endpoints:
 - `GET /templates/{id}`
 - `PUT /templates/{id}`
 - `DELETE /templates/{id}`
-- `PATCH /templates/{id}/copied`
-- `PATCH /templates/{id}/outdated/report`
-- `PATCH /templates/{id}/outdated/clear`
-- `GET /templates/outdated/count`
-- `GET /templates/outdated/summary`
+- `PATCH /templates/{id}/copied` (any role; increments `copy_count` and logs a `template_copy_events` row for the authenticated user)
+- `PATCH /templates/{id}/outdated/report?commentary=` (any role; `reported_by` is the authenticated user)
+- `PATCH /templates/{id}/outdated/clear` (manager/developer)
+- `GET /templates/outdated/count` (manager/developer)
+- `GET /templates/outdated/summary` (manager/developer)
 - `GET /templates/categories/tree`
 - `POST /templates/categories/nodes` (optional `parent_id`; omit for a root node)
 - `PUT /templates/categories/nodes/{node_id}`
@@ -143,7 +143,7 @@ Main endpoints:
 - `GET /admin/users` (developer)
 - `PUT /admin/users/{user_id}` (developer)
 - `DELETE /admin/users/{user_id}` (developer)
-- `GET /admin/dashboard/business` (manager/developer)
+- `GET /admin/dashboard/business?window=hour|day|month` (manager/developer; `window` defaults to `day`)
 - `GET /admin/dashboard/engineering` (developer)
 
 ## Typical Request Flow

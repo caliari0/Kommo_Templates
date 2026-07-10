@@ -8,7 +8,7 @@ This project is organized around a clean FastAPI CRUD flow with:
 - language-aware templates
 - SQLite persistence
 
-Current version: `v3.1.2`
+Current version: `v3.2.0`
 
 ## What This App Does
 
@@ -134,9 +134,8 @@ Contextual **warnings** can be edited per node or flow when the user has permiss
 **Business Dashboard** (`manager` + `developer`) focuses on operational outcomes:
 
 - user activity and template usage snapshots
-- requests per hour across the last 24 hours
-- top active users, top copied templates, usage by language
-- role insights for quick decisions
+- top active users by templates copied, with a **last hour / day / month** selector
+- top copied templates, usage by language
 
 **Engineering Dashboard** (`developer` only) focuses on system diagnostics and reporting:
 
@@ -180,11 +179,11 @@ There is also a small secret button hidden in the interface for curious users to
 - `GET /templates/{id}`
 - `PUT /templates/{id}`
 - `DELETE /templates/{id}`
-- `PATCH /templates/{id}/copied` (increments template copy counter)
-- `PATCH /templates/{id}/outdated/report` (optional commentary + reporter)
-- `PATCH /templates/{id}/outdated/clear`
-- `GET /templates/outdated/count`
-- `GET /templates/outdated/summary`
+- `PATCH /templates/{id}/copied` (increments template copy counter, logs a per-user copy event)
+- `PATCH /templates/{id}/outdated/report?commentary=` (reporter is taken from the authenticated user, not client input)
+- `PATCH /templates/{id}/outdated/clear` (manager/developer only)
+- `GET /templates/outdated/count` (manager/developer only)
+- `GET /templates/outdated/summary` (manager/developer only)
 
 **Category tree** (manager/developer; see OpenAPI for full query and role rules)
 
@@ -201,7 +200,7 @@ There is also a small secret button hidden in the interface for curious users to
 - `GET /admin/users` (developer only)
 - `PUT /admin/users/{user_id}` (developer only)
 - `DELETE /admin/users/{user_id}` (developer only)
-- `GET /admin/dashboard/business` (manager/developer)
+- `GET /admin/dashboard/business?window=hour|day|month` (manager/developer)
 - `GET /admin/dashboard/engineering` (developer only)
 
 ## Example Payload
@@ -231,9 +230,10 @@ app/
 ## Data Notes
 
 - SQLite database file: `app.db`
-- Table is created on startup
+- Tables are created on startup
 - `response_code` is unique per language
 - `content` supports multiline text
+- Each `PATCH /templates/{id}/copied` call logs a row (`template_id`, `username`, timestamp) in `template_copy_events`, used to compute "top active users" by copies over a selectable window
 
 ## Trade-offs and Decisions
 

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from threading import Lock
 from time import perf_counter
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,7 +16,12 @@ from app.adapters.api.auth_routes import admin_router as admin_users_router
 from app.adapters.api.auth_routes import router as auth_router
 from app.adapters.api.routes import router as template_router
 from app.adapters.web.routes import router as web_router
-from app.infrastructure.db.models import CategoryNodeModel, MessageTemplateModel, UserModel
+from app.infrastructure.db.models import (
+    CategoryNodeModel,
+    MessageTemplateModel,
+    TemplateCopyEventModel,
+    UserModel,
+)
 from app.infrastructure.db.session import (
     Base,
     SessionLocal,
@@ -35,6 +40,11 @@ app = FastAPI(
 
 REQUEST_RETENTION = timedelta(hours=24)
 ACTIVE_WINDOW = timedelta(minutes=15)
+DASHBOARD_WINDOWS: dict[str, timedelta] = {
+    "hour": timedelta(hours=1),
+    "day": timedelta(days=1),
+    "month": timedelta(days=30),
+}
 
 _request_events: deque[dict[str, object]] = deque()
 _sessions_last_seen: dict[str, datetime] = {}
@@ -94,16 +104,15 @@ def _cleanup_expired(now: datetime) -> None:
         _sessions_last_seen.pop(session_key, None)
 
 
-def _build_dashboard_payload(now: datetime) -> dict[str, object]:
-    sixty_min_cutoff = now - timedelta(minutes=60)
+def _resolve_dashboard_window(window: str) -> str:
+    cleaned = (window or "day").strip().lower()
+    if cleaned not in DASHBOARD_WINDOWS:
+        raise HTTPException(status_code=400, detail="window must be one of: hour, day, month")
+    return cleaned
 
-    with _metrics_lock:
-        _cleanup_expired(now)
-        events = list(_request_events)
 
-    events_last_60 = [event for event in events if event["timestamp"] >= sixty_min_cutoff]
-
-    top_users = Counter(event.get("username", "anonymous") for event in events_last_60).most_common(8)
+def _build_dashboard_payload(now: datetime, window: str = "day") -> dict[str, object]:
+    copy_cutoff = now - DASHBOARD_WINDOWS[window]
 
     db = SessionLocal()
     try:
@@ -124,13 +133,23 @@ def _build_dashboard_payload(now: datetime) -> dict[str, object]:
             func.count(MessageTemplateModel.id),
             func.coalesce(func.sum(MessageTemplateModel.copy_count), 0),
         ).group_by(MessageTemplateModel.language).order_by(MessageTemplateModel.language.asc()).all()
+
+        top_copiers = db.query(
+            TemplateCopyEventModel.username,
+            func.count(TemplateCopyEventModel.id),
+        ).filter(
+            TemplateCopyEventModel.created_at >= copy_cutoff
+        ).group_by(TemplateCopyEventModel.username).order_by(
+            func.count(TemplateCopyEventModel.id).desc()
+        ).limit(8).all()
     finally:
         db.close()
 
     return {
         "generated_at_utc": now.isoformat(),
         "user_metrics": {
-            "top_users_last_60m": [{"username": username, "requests": count} for username, count in top_users],
+            "window": window,
+            "top_copiers": [{"username": username, "copies": count} for username, count in top_copiers],
         },
         "template_usage": {
             "total_templates": total_templates,
@@ -284,7 +303,12 @@ async def track_request_metrics(request: Request, call_next):
 def on_startup() -> None:
     Base.metadata.create_all(
         bind=engine,
-        tables=[CategoryNodeModel.__table__, MessageTemplateModel.__table__, UserModel.__table__],
+        tables=[
+            CategoryNodeModel.__table__,
+            MessageTemplateModel.__table__,
+            UserModel.__table__,
+            TemplateCopyEventModel.__table__,
+        ],
     )
     ensure_users_schema()
     ensure_message_templates_schema()
@@ -359,9 +383,9 @@ def get_admin_metrics():
     dependencies=[Depends(require_roles(Role.manager, Role.developer))],
     summary="Business dashboard data (manager + developer)",
 )
-def get_dashboard_metrics():
+def get_dashboard_metrics(window: str = Query("day", description="hour, day, or month")):
     now = datetime.now(UTC)
-    return _build_dashboard_payload(now)
+    return _build_dashboard_payload(now, _resolve_dashboard_window(window))
 
 
 @app.get(
@@ -369,9 +393,9 @@ def get_dashboard_metrics():
     dependencies=[Depends(require_roles(Role.manager, Role.developer))],
     summary="Business dashboard data (manager + developer)",
 )
-def get_business_dashboard_metrics():
+def get_business_dashboard_metrics(window: str = Query("day", description="hour, day, or month")):
     now = datetime.now(UTC)
-    return _build_dashboard_payload(now)
+    return _build_dashboard_payload(now, _resolve_dashboard_window(window))
 
 
 @app.get(
@@ -388,14 +412,15 @@ def get_engineering_dashboard_metrics():
     "/admin/dashboard/stream",
     summary="Live dashboard metrics stream (SSE)",
 )
-async def stream_dashboard_metrics(token: str):
+async def stream_dashboard_metrics(token: str, window: str = Query("day", description="hour, day, or month")):
     principal = decode_token(token)
     if not principal or principal.role not in {Role.manager, Role.developer}:
         raise HTTPException(status_code=401, detail="unauthorized")
+    resolved_window = _resolve_dashboard_window(window)
 
     async def event_generator():
         while True:
-            payload = _build_dashboard_payload(datetime.now(UTC))
+            payload = _build_dashboard_payload(datetime.now(UTC), resolved_window)
             yield f"event: dashboard\ndata: {json.dumps(payload)}\n\n"
             await asyncio.sleep(2)
 

@@ -86,3 +86,17 @@ class MessageTemplateModel(Base):
         nullable=False,
     )
     category_node: Mapped[CategoryNodeModel | None] = relationship("CategoryNodeModel")
+
+
+class TemplateCopyEventModel(Base):
+    __tablename__ = "template_copy_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    template_id: Mapped[int] = mapped_column(ForeignKey("message_templates.id"), index=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )

@@ -112,6 +112,7 @@ const elements = {
     engineeringDashboardView: document.getElementById("engineeringDashboardView"),
     dashboardTemplateStats: document.getElementById("dashboardTemplateStats"),
     dashboardTopUsers: document.getElementById("dashboardTopUsers"),
+    dashboardTopUsersWindow: document.getElementById("dashboardTopUsersWindow"),
     dashboardTopTemplates: document.getElementById("dashboardTopTemplates"),
     dashboardLanguageUsage: document.getElementById("dashboardLanguageUsage"),
     engineeringTrafficStats: document.getElementById("engineeringTrafficStats"),
@@ -212,7 +213,8 @@ async function loadBusinessDashboardSnapshot() {
         return;
     }
     try {
-        const payload = await request("/admin/dashboard/business", { method: "GET" });
+        const window_ = elements.dashboardTopUsersWindow?.value || "day";
+        const payload = await request(`/admin/dashboard/business?window=${encodeURIComponent(window_)}`, { method: "GET" });
         renderBusinessDashboard(payload);
     } catch {
         void 0;
@@ -288,15 +290,15 @@ function renderBusinessDashboard(payload) {
         </div>
     `).join("");
 
-    const topUsers = Array.isArray(userMetrics.top_users_last_60m) ? userMetrics.top_users_last_60m : [];
-    elements.dashboardTopUsers.innerHTML = topUsers.length
-        ? topUsers.map((item) => `
+    const topCopiers = Array.isArray(userMetrics.top_copiers) ? userMetrics.top_copiers : [];
+    elements.dashboardTopUsers.innerHTML = topCopiers.length
+        ? topCopiers.map((item) => `
             <div class="endpoint-item">
                 <span class="endpoint-name">${escapeHtml(String(item.username || "unknown"))}</span>
-                <span class="endpoint-count">${formatNumber(item.requests)} req</span>
+                <span class="endpoint-count">${formatNumber(item.copies)} copies</span>
             </div>
         `).join("")
-        : '<div class="empty-state">No user activity yet.</div>';
+        : '<div class="empty-state">No copy activity in this window.</div>';
 
     const topTemplates = Array.isArray(templateUsage.top_templates_by_copy_count)
         ? templateUsage.top_templates_by_copy_count
@@ -2748,6 +2750,9 @@ elements.importTemplatesButton.addEventListener("click", openImportDialog);
 elements.importForm.addEventListener("submit", importTemplatesFromCsv);
 elements.importCancelButton.addEventListener("click", () => elements.importDialog.close());
 elements.logoutButton.addEventListener("click", logout);
+elements.dashboardTopUsersWindow?.addEventListener("change", () => {
+    void loadBusinessDashboardSnapshot();
+});
 elements.themeToggleButton.addEventListener("click", () => {
     setCurrentTheme(currentTheme === "dark" ? "light" : "dark");
 });
