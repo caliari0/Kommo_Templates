@@ -303,10 +303,28 @@ body.adhd-mode {
     gap: 8px;
 }
 
+.user-admin-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-admin-head-actions input[type="search"] {
+    width: 140px;
+    padding: 4px 8px;
+}
+
+.dashboard-scroll-list {
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
 .dashboard-panel:nth-child(1),
 .dashboard-panel:nth-child(2),
 .dashboard-panel:nth-child(3),
-.dashboard-panel:nth-child(4) {
+.dashboard-panel:nth-child(4),
+.dashboard-panel:nth-child(5) {
     grid-column: span 6;
 }
 
@@ -973,6 +991,16 @@ body.dark-theme .template-form-drawer-actions {
     margin: 0 0 12px;
     color: var(--color-text-muted);
     font-size: 13px;
+}
+
+.user-admin-active-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.user-admin-active-label input[type="checkbox"] {
+    width: auto;
 }
 
 .explorer-shell {

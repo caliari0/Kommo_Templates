@@ -69,7 +69,7 @@
                 <img class="header-logo" src="/static/header-logo.png" alt="Brand logo">
                 <div>
                 <h1>Kommo Templates Algorithm</h1>
-                <p>CRUD for message templates (v3.2.0)</p>
+                <p>CRUD for message templates (v3.3.0)</p>
                 </div>
             </div>
             <div class="header-links">
@@ -114,15 +114,25 @@
                             <button type="button" class="lang-button" data-window="month">Month</button>
                         </div>
                     </div>
-                    <div id="dashboardTopUsers" class="metrics-endpoints"></div>
+                    <div id="dashboardTopUsers" class="metrics-endpoints dashboard-scroll-list"></div>
                 </section>
                 <section class="panel dashboard-panel">
                     <h3>Top copied templates</h3>
-                    <div id="dashboardTopTemplates" class="metrics-endpoints"></div>
+                    <div id="dashboardTopTemplates" class="metrics-endpoints dashboard-scroll-list"></div>
                 </section>
                 <section class="panel dashboard-panel">
                     <h3>Usage by language</h3>
                     <div id="dashboardLanguageUsage" class="metrics-endpoints"></div>
+                </section>
+                <section class="panel dashboard-panel" id="userAdminPanel">
+                    <div class="dashboard-panel-head">
+                        <h3>User accounts</h3>
+                        <div class="user-admin-head-actions">
+                            <input id="userAdminSearchInput" type="search" placeholder="Search username" aria-label="Search usernames">
+                            <button id="openUserAdminButton" type="button" class="secondary">Create user</button>
+                        </div>
+                    </div>
+                    <div id="usersList" class="metrics-endpoints dashboard-scroll-list"></div>
                 </section>
             </div>
         </section>
@@ -168,10 +178,6 @@
                         <section class="engineering-subpanel">
                             <h4>Role traffic (60m)</h4>
                             <div id="engineeringRoleTraffic" class="metrics-endpoints engineering-mini-list"></div>
-                        </section>
-                        <section class="engineering-subpanel">
-                            <h4>User accounts</h4>
-                            <div id="usersList" class="metrics-endpoints engineering-mini-list"></div>
                         </section>
                     </div>
                 </section>
@@ -372,6 +378,34 @@
             <div class="button-row">
                 <button id="registerSubmitButton" type="submit">Create</button>
                 <button id="registerCancelButton" type="button" class="secondary">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="userAdminDialog" class="node-action-dialog">
+        <form id="userAdminForm" method="dialog" class="node-action-form">
+            <h3 id="userAdminDialogTitle">Create user</h3>
+            <input id="userAdminUserId" type="hidden">
+            <input id="userAdminMode" type="hidden" value="create">
+            <label for="userAdminUsername">Username</label>
+            <input id="userAdminUsername" type="text" maxlength="100" placeholder="username" required>
+            <label for="userAdminPassword">Password</label>
+            <input id="userAdminPassword" type="password" maxlength="200" placeholder="password">
+            <p id="userAdminPasswordHint" class="node-action-hint hidden">Leave blank to keep the current password.</p>
+            <label for="userAdminRole">Role</label>
+            <select id="userAdminRole">
+                <option value="user">user</option>
+                <option value="manager">manager</option>
+                <option value="developer">developer</option>
+            </select>
+            <label class="user-admin-active-label">
+                <input id="userAdminIsActive" type="checkbox" checked>
+                Active
+            </label>
+            <p id="userAdminStatusMessage" class="status"></p>
+            <div class="button-row">
+                <button id="userAdminSubmitButton" type="submit">Create</button>
+                <button id="userAdminCancelButton" type="button" class="secondary">Cancel</button>
             </div>
         </form>
     </dialog>

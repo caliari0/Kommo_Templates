@@ -103,7 +103,7 @@ def me(current: Annotated[CurrentUser, Depends(get_current_user)], db: Annotated
 @admin_router.get(
     "",
     response_model=list[UserSummaryResponse],
-    dependencies=[Depends(require_roles(Role.developer))],
+    dependencies=[Depends(require_roles(Role.developer, Role.manager))],
     summary="List all accounts",
 )
 def list_users(db: Annotated[Session, Depends(get_db)]):
@@ -124,13 +124,21 @@ def list_users(db: Annotated[Session, Depends(get_db)]):
 @admin_router.put(
     "/{user_id}",
     response_model=UserSummaryResponse,
-    dependencies=[Depends(require_roles(Role.developer))],
+    dependencies=[Depends(require_roles(Role.developer, Role.manager))],
     summary="Update an account",
 )
 def update_user(user_id: int, payload: UserUpdateRequest, db: Annotated[Session, Depends(get_db)]):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    if user.username in PROTECTED_USERNAMES and (
+        payload.username is not None or payload.role is not None or payload.is_active is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account is protected; only its password can be changed.",
+        )
 
     if payload.username is not None:
         new_username = _normalize_username(payload.username)
@@ -161,7 +169,7 @@ def update_user(user_id: int, payload: UserUpdateRequest, db: Annotated[Session,
 @admin_router.delete(
     "/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_roles(Role.developer))],
+    dependencies=[Depends(require_roles(Role.developer, Role.manager))],
     summary="Delete an account",
 )
 def delete_user(

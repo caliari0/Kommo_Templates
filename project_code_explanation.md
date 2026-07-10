@@ -2,7 +2,7 @@
 
 This is a FastAPI CRUD app for reusable message templates.
 
-Current version: `v3.2.0`
+Current version: `v3.3.0`
 
 Main components:
 
@@ -71,7 +71,7 @@ Database and persistence implementation.
 HTTP API layer.
 
 - `auth.py`: token + role resolution and role-based permission checks
-- `auth_routes.py`: register/login/current-user and developer account-management endpoints
+- `auth_routes.py`: register/login/current-user and account-management endpoints (manager/developer); `PROTECTED_USERNAMES` (`manager`, `developer`, `user`) blocks deletion and blocks username/role/is_active edits on those three (password changes still allowed)
 - `schemas.py`: Pydantic input/output models
 - `routes.py`: endpoint definitions + exception to HTTP mapping
 
@@ -98,11 +98,12 @@ UI behavior highlights:
 - Recent changes panel (all users): templates updated since each user's last session, with mark-as-seen and open-to-template
 - Login screen supports **Create account**; self-registration allows `user`, `manager`, or `developer` roles
 - Business Dashboard includes operational metrics for templates and user activity, including a "Top active users" panel ranked by templates copied with an **hour/day/month** window selector
+- Business Dashboard's **User accounts** panel (manager/developer): create/edit/delete accounts via a modal dialog (`userAdminDialog`, reused for both create and edit), with a small search box that filters the already-fetched list by username client-side, no re-fetch; edit fields for username/role/active are disabled in the dialog when targeting a protected account (only password stays editable)
+- "Top active users", "Top copied templates", and "User accounts" panels share a `.dashboard-scroll-list` class (fixed max-height + internal scroll) so they stay the same size as the other dashboard panels regardless of list length
 - Engineering Dashboard includes technical diagnostics (latency percentiles, error rate, status breakdown, and slow endpoints), plus integrated usage metrics reporting (dashboard data refreshes on a fixed interval)
-- Account administration is embedded in Engineering Dashboard and hides seeded default accounts from the visible list
 - Recent changes timestamps and header clock are timezone-aware for each user
-- Protected default users (`manager`, `developer`, `user`) cannot be deleted
-- Deprecated full-width metrics and standalone user-accounts panels from the workspace bottom bar in favor of the Engineering Dashboard
+- Protected default users (`manager`, `developer`, `user`) cannot be deleted or have their username/role/active status edited (password resets still allowed); they're also hidden from the visible account list
+- Deprecated full-width metrics and standalone user-accounts panels from the workspace bottom bar in favor of the dashboards
 - dark/light mode toggle persisted in `localStorage` (toggle in bottom bar)
 - ADHD mode toggle (Comfortaa font across the UI), also persisted
 - a hidden secret button in the page for discoverability/easter-egg behavior
@@ -111,7 +112,7 @@ UI behavior highlights:
 
 Protected primarily with bearer token auth, with `X-Role` retained as a compatibility fallback:
 
-- `manager` / `developer`: template CRUD and category-tree routes (developer also has metrics-related access where exposed)
+- `manager` / `developer`: template CRUD, category-tree routes, and account admin routes (`/admin/users*`); developer also has Engineering Dashboard metrics-related access where exposed
 - `user`: read-only
 
 Common status mapping:
@@ -140,9 +141,9 @@ Main endpoints:
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /auth/me`
-- `GET /admin/users` (developer)
-- `PUT /admin/users/{user_id}` (developer)
-- `DELETE /admin/users/{user_id}` (developer)
+- `GET /admin/users` (manager/developer)
+- `PUT /admin/users/{user_id}` (manager/developer; protected accounts (`manager`/`developer`/`user`) reject username/role/is_active changes with 400, password changes still allowed)
+- `DELETE /admin/users/{user_id}` (manager/developer; self-delete and protected-account delete both rejected with 400)
 - `GET /admin/dashboard/business?window=hour|day|month` (manager/developer; `window` defaults to `day`)
 - `GET /admin/dashboard/engineering` (developer)
 

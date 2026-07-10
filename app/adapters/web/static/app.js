@@ -78,8 +78,22 @@ const elements = {
     metricsEndpoints: document.getElementById("metricsEndpoints"),
     metricsSummaryText: document.getElementById("metricsSummaryText"),
     userAdminPanel: document.getElementById("userAdminPanel"),
-    usersRefreshButton: document.getElementById("usersRefreshButton"),
     usersList: document.getElementById("usersList"),
+    userAdminSearchInput: document.getElementById("userAdminSearchInput"),
+    openUserAdminButton: document.getElementById("openUserAdminButton"),
+    userAdminDialog: document.getElementById("userAdminDialog"),
+    userAdminForm: document.getElementById("userAdminForm"),
+    userAdminDialogTitle: document.getElementById("userAdminDialogTitle"),
+    userAdminUserId: document.getElementById("userAdminUserId"),
+    userAdminMode: document.getElementById("userAdminMode"),
+    userAdminUsername: document.getElementById("userAdminUsername"),
+    userAdminPassword: document.getElementById("userAdminPassword"),
+    userAdminPasswordHint: document.getElementById("userAdminPasswordHint"),
+    userAdminRole: document.getElementById("userAdminRole"),
+    userAdminIsActive: document.getElementById("userAdminIsActive"),
+    userAdminStatusMessage: document.getElementById("userAdminStatusMessage"),
+    userAdminSubmitButton: document.getElementById("userAdminSubmitButton"),
+    userAdminCancelButton: document.getElementById("userAdminCancelButton"),
     importTemplatesButton: document.getElementById("importTemplatesButton"),
     importDialog: document.getElementById("importDialog"),
     importForm: document.getElementById("importForm"),
@@ -135,9 +149,9 @@ let currentTheme = "light";
 let currentDashboardWindow = "day";
 let currentFontMode = "default";
 let metricsRefreshIntervalId = null;
-let usersRefreshIntervalId = null;
 let outdatedRefreshIntervalId = null;
 let categoryTreeData = [];
+let lastLoadedUsers = [];
 let selectedExplorerPath = "";
 let selectedExplorerFlow = "general";
 let selectedFlowTab = "all";
@@ -219,6 +233,7 @@ async function loadBusinessDashboardSnapshot() {
     } catch {
         void 0;
     }
+    await loadUsers();
 }
 
 async function loadEngineeringDashboardSnapshot() {
@@ -1442,7 +1457,6 @@ function applyRoleUi(role) {
     elements.appPanel.classList.toggle("read-only", readOnly);
     elements.formMode.textContent = readOnly ? "Read-only mode" : "Create mode";
     elements.bottomMetricsBar.classList.toggle("hidden", role !== "developer");
-    elements.userAdminPanel?.classList.toggle("hidden", role !== "developer");
     const showReports = ["manager", "developer"].includes(role);
     elements.outdatedBellWrap.classList.toggle("hidden", !showReports);
     if (!showReports) {
@@ -1788,7 +1802,9 @@ function renderUsers(users) {
                 <div class="endpoint-item">
                     <span class="endpoint-name">${escapeHtml(user.username)} (${escapeHtml(user.role)}) - ${activeLabel}</span>
                     <span class="endpoint-count">
-                        <button type="button" class="secondary template-card-btn" data-action="edit-user" data-user-id="${user.id}">Edit</button>
+                        <button type="button" class="secondary template-card-btn" data-action="edit-user"
+                            data-user-id="${user.id}" data-username="${escapeHtml(user.username)}"
+                            data-role="${escapeHtml(user.role)}" data-is-active="${user.is_active ? "1" : "0"}">Edit</button>
                         ${deleteButton}
                     </span>
                 </div>
@@ -1796,33 +1812,17 @@ function renderUsers(users) {
         })
         .join("");
     elements.usersList.querySelectorAll('[data-action="edit-user"]').forEach((button) => {
-        button.addEventListener("click", async () => {
+        button.addEventListener("click", () => {
             const userId = Number(button.dataset.userId || 0);
             if (!userId) {
                 return;
             }
-            const username = window.prompt("New username (leave empty to keep):", "");
-            const role = window.prompt("New role (user/manager/developer, leave empty to keep):", "");
-            const password = window.prompt("New password (leave empty to keep):", "");
-            const activeRaw = window.prompt("Active? (yes/no, leave empty to keep):", "");
-            const payload = {};
-            if (username && username.trim()) payload.username = username.trim();
-            if (role && role.trim()) payload.role = role.trim().toLowerCase();
-            if (password && password.trim()) payload.password = password;
-            if (activeRaw && activeRaw.trim()) payload.is_active = ["yes", "y", "true", "1"].includes(activeRaw.trim().toLowerCase());
-            if (!Object.keys(payload).length) {
-                return;
-            }
-            try {
-                await request(`/admin/users/${userId}`, {
-                    method: "PUT",
-                    body: JSON.stringify(payload),
-                });
-                setStatus("User updated.", "success");
-                await loadUsers();
-            } catch (error) {
-                setStatus(error.message, "error");
-            }
+            openUserAdminDialog("edit", {
+                id: userId,
+                username: button.dataset.username,
+                role: button.dataset.role,
+                isActive: button.dataset.isActive === "1",
+            });
         });
     });
     elements.usersList.querySelectorAll('[data-action="delete-user"]').forEach((button) => {
@@ -1849,14 +1849,22 @@ function renderUsers(users) {
     });
 }
 
+function renderFilteredUsers() {
+    const query = (elements.userAdminSearchInput?.value || "").trim().toLowerCase();
+    const filtered = query
+        ? lastLoadedUsers.filter((user) => String(user.username || "").toLowerCase().includes(query))
+        : lastLoadedUsers;
+    renderUsers(filtered);
+}
+
 async function loadUsers() {
-    if (currentSession?.role !== "developer") {
+    if (!canAccessBusinessDashboard()) {
         elements.usersList.innerHTML = "";
         return;
     }
     try {
-        const users = await request("/admin/users", { method: "GET" });
-        renderUsers(users);
+        lastLoadedUsers = await request("/admin/users", { method: "GET" });
+        renderFilteredUsers();
     } catch (error) {
         elements.usersList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
     }
@@ -1877,23 +1885,6 @@ function stopMetricsAutoRefresh() {
     }
     window.clearInterval(metricsRefreshIntervalId);
     metricsRefreshIntervalId = null;
-}
-
-function startUsersAutoRefresh() {
-    if (usersRefreshIntervalId) {
-        window.clearInterval(usersRefreshIntervalId);
-    }
-    usersRefreshIntervalId = window.setInterval(() => {
-        loadUsers();
-    }, 30000);
-}
-
-function stopUsersAutoRefresh() {
-    if (!usersRefreshIntervalId) {
-        return;
-    }
-    window.clearInterval(usersRefreshIntervalId);
-    usersRefreshIntervalId = null;
 }
 
 async function loadOutdatedNotification() {
@@ -2102,12 +2093,8 @@ function openApp() {
     elements.sessionBadge.textContent = `${currentSession.username} (${currentSession.role})`;
     ensureRecentChangesBaseline();
     applyRoleUi(currentSession.role);
-    if (currentSession.role === "developer") {
-        loadUsers();
-        startUsersAutoRefresh();
-    } else {
+    if (currentSession.role !== "developer") {
         stopMetricsAutoRefresh();
-        stopUsersAutoRefresh();
     }
     loadOutdatedNotification();
     startOutdatedAutoRefresh();
@@ -2135,7 +2122,6 @@ function openLogin() {
     elements.appPanel.classList.add("hidden");
     elements.loginPanel.classList.remove("hidden");
     stopMetricsAutoRefresh();
-    stopUsersAutoRefresh();
     stopOutdatedAutoRefresh();
     stopDashboardAutoRefresh();
     markRecentChangesAsSeenNow();
@@ -2689,6 +2675,85 @@ async function register(event) {
     }
 }
 
+function setUserAdminStatus(message, type = "") {
+    elements.userAdminStatusMessage.textContent = message;
+    elements.userAdminStatusMessage.className = `status ${type}`.trim();
+}
+
+function openUserAdminDialog(mode, userData) {
+    elements.userAdminForm.reset();
+    elements.userAdminMode.value = mode;
+    const isProtected = mode === "edit" && PROTECTED_USERNAMES.has(String(userData?.username || "").toLowerCase());
+    if (mode === "edit") {
+        elements.userAdminDialogTitle.textContent = `Edit user: ${userData.username}`;
+        elements.userAdminUserId.value = userData.id;
+        elements.userAdminUsername.value = userData.username;
+        elements.userAdminRole.value = userData.role;
+        elements.userAdminIsActive.checked = !!userData.isActive;
+        elements.userAdminPasswordHint.classList.remove("hidden");
+        elements.userAdminSubmitButton.textContent = "Save";
+    } else {
+        elements.userAdminDialogTitle.textContent = "Create user";
+        elements.userAdminUserId.value = "";
+        elements.userAdminIsActive.checked = true;
+        elements.userAdminPasswordHint.classList.add("hidden");
+        elements.userAdminSubmitButton.textContent = "Create";
+    }
+    elements.userAdminUsername.disabled = isProtected;
+    elements.userAdminRole.disabled = isProtected;
+    elements.userAdminIsActive.disabled = isProtected;
+    elements.userAdminForm.dataset.editingProtected = isProtected ? "1" : "0";
+    setUserAdminStatus("");
+    elements.userAdminDialog.showModal();
+}
+
+async function submitUserAdminForm(event) {
+    event.preventDefault();
+    const mode = elements.userAdminMode.value;
+    const username = elements.userAdminUsername.value.trim().toLowerCase();
+    const password = elements.userAdminPassword.value;
+    const role = elements.userAdminRole.value;
+    const isActive = elements.userAdminIsActive.checked;
+    const isProtected = elements.userAdminForm.dataset.editingProtected === "1";
+    try {
+        if (mode === "create") {
+            if (!username || !password) {
+                setUserAdminStatus("Username and password are required.", "error");
+                return;
+            }
+            await request("/auth/register", {
+                method: "POST",
+                body: JSON.stringify({ username, password, role }),
+            });
+        } else {
+            const userId = Number(elements.userAdminUserId.value || 0);
+            if (!userId) {
+                return;
+            }
+            const payload = {};
+            if (password) payload.password = password;
+            if (!isProtected) {
+                if (username) payload.username = username;
+                if (role) payload.role = role;
+                payload.is_active = isActive;
+            }
+            if (!Object.keys(payload).length) {
+                setUserAdminStatus("Nothing to update.", "error");
+                return;
+            }
+            await request(`/admin/users/${userId}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+        }
+        elements.userAdminDialog.close();
+        setStatus(mode === "create" ? "User created." : "User updated.", "success");
+        await loadUsers();
+    } catch (error) {
+        setUserAdminStatus(error.message, "error");
+    }
+}
+
 function openImportDialog() {
     if (!["manager", "developer"].includes(currentSession?.role || "")) {
         return;
@@ -2746,6 +2811,10 @@ elements.toggleLoginPasswordButton.addEventListener("click", () => {
 elements.openRegisterButton.addEventListener("click", openRegisterDialog);
 elements.registerForm.addEventListener("submit", register);
 elements.registerCancelButton.addEventListener("click", () => elements.registerDialog.close());
+elements.openUserAdminButton?.addEventListener("click", () => openUserAdminDialog("create"));
+elements.userAdminForm.addEventListener("submit", submitUserAdminForm);
+elements.userAdminCancelButton.addEventListener("click", () => elements.userAdminDialog.close());
+elements.userAdminSearchInput?.addEventListener("input", renderFilteredUsers);
 elements.importTemplatesButton.addEventListener("click", openImportDialog);
 elements.importForm.addEventListener("submit", importTemplatesFromCsv);
 elements.importCancelButton.addEventListener("click", () => elements.importDialog.close());
@@ -2856,7 +2925,6 @@ elements.metricsRefreshButton?.addEventListener("click", loadAdminMetrics);
 elements.metricsSummaryButton?.addEventListener("click", generateMetricsSummaryText);
 elements.engineeringMetricsRefreshButton?.addEventListener("click", loadAdminMetrics);
 elements.engineeringMetricsSummaryButton?.addEventListener("click", generateMetricsSummaryText);
-elements.usersRefreshButton?.addEventListener("click", loadUsers);
 elements.recentChangesButton.addEventListener("click", () => {
     elements.recentChangesPanel.classList.toggle("hidden");
     if (!elements.recentChangesPanel.classList.contains("hidden")) {

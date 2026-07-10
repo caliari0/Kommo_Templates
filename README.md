@@ -8,7 +8,7 @@ This project is organized around a clean FastAPI CRUD flow with:
 - language-aware templates
 - SQLite persistence
 
-Current version: `v3.2.0`
+Current version: `v3.3.0`
 
 ## What This App Does
 
@@ -106,8 +106,8 @@ The `/ui` login uses database-backed accounts.
 
 - Use **Create account** on the login screen to register a new account.
 - Self-registration roles are `user`, `manager`, or `developer`.
-- `developer` users can also manage other accounts from the Engineering Dashboard.
-- Default seeded accounts are preserved for continuity: `manager`, `developer`, and `user` (password `kommotemplates0`).
+- `manager` and `developer` users can also create, edit, and delete other accounts from the **User accounts** panel on the Business Dashboard.
+- Default seeded accounts are preserved for continuity: `manager`, `developer`, and `user` (password `kommotemplates0`). These three are protected: they can never be deleted, and their username/role/active status can't be edited (only their password can be reset).
 
 ## Web UI (Flow Explorer and Templates)
 
@@ -136,6 +136,8 @@ Contextual **warnings** can be edited per node or flow when the user has permiss
 - user activity and template usage snapshots
 - top active users by templates copied, with a **last hour / day / month** selector
 - top copied templates, usage by language
+- **User accounts** panel: create/edit/delete accounts (username, password, role, active status), with a small search box to filter by username; the seeded `manager`/`developer`/`user` accounts are hidden from the list and protected from edits/deletion
+- "Top active users", "Top copied templates", and "User accounts" panels are height-capped with internal scrolling so they stay the same size as the other dashboard panels regardless of list length
 
 **Engineering Dashboard** (`developer` only) focuses on system diagnostics and reporting:
 
@@ -145,7 +147,6 @@ Contextual **warnings** can be edited per node or flow when the user has permiss
 - auth failures (24h)
 - slow endpoints ranked by `p95` latency
 - integrated live usage metrics + one-click report generation
-- user accounts panel focused on non-seeded accounts
 
 **Reports and recent changes**:
 
@@ -154,7 +155,7 @@ Contextual **warnings** can be edited per node or flow when the user has permiss
 
 **User management and metrics**:
 
-- **Developer** users manage accounts directly inside Engineering Dashboard.
+- **Manager** and **developer** users manage accounts directly from the Business Dashboard's **User accounts** panel (create, edit, delete).
 - Seeded default accounts (`manager`, `developer`, `user`) stay protected and are hidden from the dashboard account list.
 - Metrics include global + per-user activity, with status-code hover descriptions and report generation.
 
@@ -197,9 +198,9 @@ There is also a small secret button hidden in the interface for curious users to
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /auth/me`
-- `GET /admin/users` (developer only)
-- `PUT /admin/users/{user_id}` (developer only)
-- `DELETE /admin/users/{user_id}` (developer only)
+- `GET /admin/users` (manager/developer)
+- `PUT /admin/users/{user_id}` (manager/developer; seeded accounts only allow a password change)
+- `DELETE /admin/users/{user_id}` (manager/developer; seeded accounts and self-delete are blocked)
 - `GET /admin/dashboard/business?window=hour|day|month` (manager/developer)
 - `GET /admin/dashboard/engineering` (developer only)
 
