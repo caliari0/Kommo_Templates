@@ -141,6 +141,7 @@ const elements = {
 let selectedTemplateId = null;
 let currentTemplates = [];
 let currentSession = null;
+const copyInFlight = new Set();
 let currentLanguage = "en";
 let currentTheme = "light";
 let currentDashboardWindow = "day";
@@ -2224,12 +2225,13 @@ function renderTemplates(templates) {
                     : "")
                 : `<button type="button" class="template-card-btn warn" data-action="report-outdated" data-id="${template.id}">Report</button>`;
             const copyCountBadge = `<span class="copy-count-compact" title="Times copied">Copied ${Number(template.copy_count || 0)}x</span>`;
+            const copyDisabled = copyInFlight.has(template.id) ? "disabled" : "";
 
             return `
                 <article class="template-card ${isActive}">
                     <div class="template-card-actions">
                         ${editButton}
-                        <button type="button" class="template-card-btn secondary" data-action="copy" data-id="${template.id}">Copy</button>
+                        <button type="button" class="template-card-btn secondary" data-action="copy" data-id="${template.id}" ${copyDisabled}>Copy</button>
                         <div class="template-card-report-group">
                             ${reportButton}
                             ${copyCountBadge}
@@ -2256,6 +2258,11 @@ function renderTemplates(templates) {
             );
             if (template) {
                 if (button.dataset.action === "copy") {
+                    if (copyInFlight.has(template.id)) {
+                        return;
+                    }
+                    copyInFlight.add(template.id);
+                    button.disabled = true;
                     try {
                         await copyTextToClipboard(template.content);
                         await request(`/templates/${template.id}/copied`, { method: "PATCH" });
@@ -2263,6 +2270,18 @@ function renderTemplates(templates) {
                         await loadTemplates();
                     } catch (error) {
                         setStatus(error.message, "error");
+                    } finally {
+                        // Keep the guard up briefly after the request settles so a fast
+                        // follow-up click can't fire a second copy event right away.
+                        setTimeout(() => {
+                            copyInFlight.delete(template.id);
+                            const freshButton = document.querySelector(
+                                `.template-card button[data-action="copy"][data-id="${template.id}"]`,
+                            );
+                            if (freshButton) {
+                                freshButton.disabled = false;
+                            }
+                        }, 2000);
                     }
                     return;
                 }
