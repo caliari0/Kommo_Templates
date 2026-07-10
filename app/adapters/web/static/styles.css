@@ -296,8 +296,11 @@ body.adhd-mode {
     padding: 16px;
 }
 
-.dashboard-window-switcher {
-    margin-bottom: 10px;
+.dashboard-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .dashboard-panel:nth-child(1),

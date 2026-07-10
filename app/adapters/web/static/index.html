@@ -106,11 +106,13 @@
                     <div id="dashboardTemplateStats" class="dashboard-stats"></div>
                 </section>
                 <section class="panel dashboard-panel">
-                    <h3>Top active users</h3>
-                    <div id="dashboardTopUsersWindow" class="language-switcher dashboard-window-switcher" aria-label="Time range">
-                        <button type="button" class="lang-button" data-window="hour">Hour</button>
-                        <button type="button" class="lang-button active" data-window="day">Day</button>
-                        <button type="button" class="lang-button" data-window="month">Month</button>
+                    <div class="dashboard-panel-head">
+                        <h3>Top active users</h3>
+                        <div id="dashboardTopUsersWindow" class="language-switcher" aria-label="Time range">
+                            <button type="button" class="lang-button" data-window="hour">Hour</button>
+                            <button type="button" class="lang-button active" data-window="day">Day</button>
+                            <button type="button" class="lang-button" data-window="month">Month</button>
+                        </div>
                     </div>
                     <div id="dashboardTopUsers" class="metrics-endpoints"></div>
                 </section>
