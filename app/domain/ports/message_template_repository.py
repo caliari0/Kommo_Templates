@@ -53,3 +53,20 @@ class MessageTemplateRepository(ABC):
     @abstractmethod
     def delete(self, template_id: int) -> bool:
         raise NotImplementedError
+
+    @abstractmethod
+    def increment_copy_count(self, template_id: int) -> MessageTemplate | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def report_outdated(
+        self,
+        template_id: int,
+        reported_by: str,
+        commentary: str | None,
+    ) -> MessageTemplate | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def clear_outdated(self, template_id: int) -> MessageTemplate | None:
+        raise NotImplementedError

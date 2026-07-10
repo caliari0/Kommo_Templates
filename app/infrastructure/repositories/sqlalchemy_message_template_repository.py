@@ -112,6 +112,45 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
         self.db.commit()
         return True
 
+    def increment_copy_count(self, template_id: int) -> MessageTemplate | None:
+        model = self.db.get(MessageTemplateModel, template_id)
+        if not model:
+            return None
+
+        model.copy_count = (model.copy_count or 0) + 1
+        self.db.commit()
+        self.db.refresh(model)
+        return self._to_entity(model)
+
+    def report_outdated(
+        self,
+        template_id: int,
+        reported_by: str,
+        commentary: str | None,
+    ) -> MessageTemplate | None:
+        model = self.db.get(MessageTemplateModel, template_id)
+        if not model:
+            return None
+
+        model.is_outdated = True
+        model.outdated_reported_by = reported_by
+        model.outdated_commentary = commentary
+        self.db.commit()
+        self.db.refresh(model)
+        return self._to_entity(model)
+
+    def clear_outdated(self, template_id: int) -> MessageTemplate | None:
+        model = self.db.get(MessageTemplateModel, template_id)
+        if not model:
+            return None
+
+        model.is_outdated = False
+        model.outdated_reported_by = None
+        model.outdated_commentary = None
+        self.db.commit()
+        self.db.refresh(model)
+        return self._to_entity(model)
+
     @staticmethod
     def _to_entity(model: MessageTemplateModel) -> MessageTemplate:
         return MessageTemplate(
@@ -122,6 +161,10 @@ class SqlAlchemyMessageTemplateRepository(MessageTemplateRepository):
             language=model.language,
             response_code=model.response_code,
             content=model.content,
+            copy_count=model.copy_count,
+            is_outdated=model.is_outdated,
+            outdated_reported_by=model.outdated_reported_by,
+            outdated_commentary=model.outdated_commentary,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )

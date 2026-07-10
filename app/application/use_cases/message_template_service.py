@@ -111,6 +111,29 @@ class MessageTemplateService:
         if not deleted:
             raise TemplateNotFoundError("template not found")
 
+    def increment_copy_count(self, template_id: int) -> MessageTemplate:
+        template = self.repository.increment_copy_count(template_id)
+        if not template:
+            raise TemplateNotFoundError("template not found")
+        return template
+
+    def report_outdated(
+        self,
+        template_id: int,
+        reported_by: str,
+        commentary: str | None,
+    ) -> MessageTemplate:
+        template = self.repository.report_outdated(template_id, reported_by, commentary)
+        if not template:
+            raise TemplateNotFoundError("template not found")
+        return template
+
+    def clear_outdated(self, template_id: int) -> MessageTemplate:
+        template = self.repository.clear_outdated(template_id)
+        if not template:
+            raise TemplateNotFoundError("template not found")
+        return template
+
     @staticmethod
     def _validate_fields(
         category: str,

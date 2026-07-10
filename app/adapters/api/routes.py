@@ -2,9 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, Response, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.adapters.api.auth import Role, require_roles
+from app.adapters.api.auth import CurrentUser, Role, require_roles
 from app.adapters.api.schemas import (
     MessageTemplateCreate,
     MessageTemplateResponse,
@@ -154,6 +154,59 @@ def search_templates(
 
 
 @router.get(
+    "/outdated/count",
+    summary="Count templates currently flagged as outdated",
+    dependencies=[Depends(require_roles(Role.manager, Role.developer))],
+)
+def count_outdated_templates(
+    db: Annotated[Session, Depends(get_db)],
+    language: Annotated[str | None, Query(description="Optional language filter.")] = None,
+) -> dict[str, int]:
+    statement = select(func.count(MessageTemplateModel.id)).where(MessageTemplateModel.is_outdated.is_(True))
+    if language:
+        statement = statement.where(MessageTemplateModel.language == language.strip().lower())
+    count = db.scalar(statement) or 0
+    return {"count": count}
+
+
+@router.get(
+    "/outdated/summary",
+    summary="List templates currently flagged as outdated, most recently reported first",
+    dependencies=[Depends(require_roles(Role.manager, Role.developer))],
+)
+def summarize_outdated_templates(
+    db: Annotated[Session, Depends(get_db)],
+    language: Annotated[str | None, Query(description="Optional language filter.")] = None,
+    limit: Annotated[int, Query(ge=1, le=100, description="Max number of reports to return.")] = 12,
+) -> dict[str, object]:
+    cleaned_language = language.strip().lower() if language else None
+
+    count_statement = select(func.count(MessageTemplateModel.id)).where(MessageTemplateModel.is_outdated.is_(True))
+    items_statement = (
+        select(MessageTemplateModel)
+        .where(MessageTemplateModel.is_outdated.is_(True))
+        .order_by(MessageTemplateModel.updated_at.desc())
+        .limit(limit)
+    )
+    if cleaned_language:
+        count_statement = count_statement.where(MessageTemplateModel.language == cleaned_language)
+        items_statement = items_statement.where(MessageTemplateModel.language == cleaned_language)
+
+    count = db.scalar(count_statement) or 0
+    templates = db.scalars(items_statement).all()
+    items = [
+        {
+            "template_id": template.id,
+            "response_code": template.response_code,
+            "reported_by": template.outdated_reported_by,
+            "commentary": template.outdated_commentary,
+        }
+        for template in templates
+    ]
+    return {"count": count, "items": items}
+
+
+@router.get(
     "/{template_id}",
     response_model=MessageTemplateResponse,
     summary="Get one message template by id",
@@ -201,6 +254,68 @@ def update_template(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except InvalidLanguageError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{template_id}/copied",
+    response_model=MessageTemplateResponse,
+    summary="Record that a template's content was copied",
+    dependencies=[Depends(require_roles(Role.user, Role.manager, Role.developer))],
+)
+def mark_template_copied(
+    template_id: int,
+    service: Annotated[MessageTemplateService, Depends(get_service)],
+) -> MessageTemplateResponse:
+    try:
+        template = service.increment_copy_count(template_id)
+        return MessageTemplateResponse.model_validate(template)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{template_id}/outdated/report",
+    response_model=MessageTemplateResponse,
+    summary="Flag a template as outdated",
+)
+def report_template_outdated(
+    template_id: int,
+    service: Annotated[MessageTemplateService, Depends(get_service)],
+    current_user: Annotated[
+        CurrentUser,
+        Depends(require_roles(Role.user, Role.manager, Role.developer)),
+    ],
+    commentary: Annotated[
+        str | None,
+        Query(max_length=2000, description="Optional commentary about why the template is outdated."),
+    ] = None,
+) -> MessageTemplateResponse:
+    try:
+        template = service.report_outdated(
+            template_id,
+            reported_by=current_user.username,
+            commentary=commentary.strip() if commentary and commentary.strip() else None,
+        )
+        return MessageTemplateResponse.model_validate(template)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{template_id}/outdated/clear",
+    response_model=MessageTemplateResponse,
+    summary="Clear the outdated flag from a template",
+    dependencies=[Depends(require_roles(Role.manager, Role.developer))],
+)
+def clear_template_outdated(
+    template_id: int,
+    service: Annotated[MessageTemplateService, Depends(get_service)],
+) -> MessageTemplateResponse:
+    try:
+        template = service.clear_outdated(template_id)
+        return MessageTemplateResponse.model_validate(template)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get(
