@@ -114,6 +114,15 @@ The **New node** action follows the current selection:
 
 **Rename** and **Delete** apply to the selected node, including top-level roots.
 
+### Creating nodes via CSV import
+
+CSV import (`POST /templates/import/csv`) resolves each row's `category` column as a `>`-delimited path and walks it level by level:
+
+- Any segment missing under its parent is created automatically, so the full category tree doesn't need to exist ahead of time.
+- Matching is case-insensitive (`billing` matches an existing `Billing` node), so re-importing the same path with different casing reuses the same node instead of creating a duplicate.
+- When a brand-new node is created, all-lowercase segment words are auto-capitalized (`billing` → `Billing`); segments with deliberate mixed casing (e.g. `FAQ`, `API`) are kept as typed.
+- Manual template create/update use the same resolution logic.
+
 ## Why This Structure Works Well
 
 It gives you:

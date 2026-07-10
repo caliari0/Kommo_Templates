@@ -65,7 +65,7 @@ Database and persistence implementation.
 
 - `db/session.py`: SQLAlchemy engine/session + startup schema check
 - `db/models.py`: `MessageTemplateModel` (unique constraint on `response_code`, `language`; `copy_count`, `is_outdated`, `outdated_reported_by`, `outdated_commentary`), `TemplateCopyEventModel` (one row per copy action: `template_id`, `username`, `created_at`), `UserModel`, `CategoryNodeModel`
-- `repositories/sqlalchemy_message_template_repository.py`: concrete repository implementation
+- `repositories/sqlalchemy_message_template_repository.py`: concrete repository implementation; `_get_or_create_category_node` resolves a `>`-delimited category path, auto-creating any missing segment nodes and matching existing ones case-insensitively (new nodes get all-lowercase words auto-capitalized, mixed-case segments like `FAQ` are preserved) — used by both `create()` and `update()`, so it covers CSV import and manual template create/update alike
 
 ### `app/adapters/api`
 

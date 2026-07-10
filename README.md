@@ -228,6 +228,9 @@ FOLLOWUP_001,"Just checking in.",,es
 - `category` is optional; defaults to `newtemp` when blank or the column is omitted.
 - `language` is optional; defaults to the current UI language (`X-Language` header) when blank or the column is omitted.
 - A row whose `response_code` + `language` already matches an existing template **updates** that template instead of creating a duplicate (upsert).
+- **Category auto-creation**: `category` is a `>`-delimited path (e.g. `Support > Billing > Refunds`). Any segment that doesn't already exist under its parent is created automatically — no need to pre-create the category tree before importing.
+- **Case-insensitive matching**: segment lookup ignores case, so `billing`, `Billing`, and `BILLING` all resolve to the same node rather than creating duplicates. When a new node is created, all-lowercase words are capitalized (`billing` → `Billing`); words with deliberate mixed casing (e.g. `FAQ`, `API`) are left as-is.
+- This same category resolution (auto-create + case-insensitive match) also applies to manual template create/update, not just CSV import.
 - The response reports `total_rows`, `created`, `updated`, `failed`, and up to 20 row-level `errors`.
 
 ## Project Structure
