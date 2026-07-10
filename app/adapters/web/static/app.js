@@ -132,6 +132,7 @@ let currentTemplates = [];
 let currentSession = null;
 let currentLanguage = "en";
 let currentTheme = "light";
+let currentDashboardWindow = "day";
 let currentFontMode = "default";
 let metricsRefreshIntervalId = null;
 let usersRefreshIntervalId = null;
@@ -213,8 +214,7 @@ async function loadBusinessDashboardSnapshot() {
         return;
     }
     try {
-        const window_ = elements.dashboardTopUsersWindow?.value || "day";
-        const payload = await request(`/admin/dashboard/business?window=${encodeURIComponent(window_)}`, { method: "GET" });
+        const payload = await request(`/admin/dashboard/business?window=${encodeURIComponent(currentDashboardWindow)}`, { method: "GET" });
         renderBusinessDashboard(payload);
     } catch {
         void 0;
@@ -2750,8 +2750,18 @@ elements.importTemplatesButton.addEventListener("click", openImportDialog);
 elements.importForm.addEventListener("submit", importTemplatesFromCsv);
 elements.importCancelButton.addEventListener("click", () => elements.importDialog.close());
 elements.logoutButton.addEventListener("click", logout);
-elements.dashboardTopUsersWindow?.addEventListener("change", () => {
-    void loadBusinessDashboardSnapshot();
+elements.dashboardTopUsersWindow?.querySelectorAll(".lang-button").forEach((button) => {
+    button.addEventListener("click", async () => {
+        const nextWindow = button.dataset.window;
+        if (!nextWindow || nextWindow === currentDashboardWindow) {
+            return;
+        }
+        currentDashboardWindow = nextWindow;
+        elements.dashboardTopUsersWindow.querySelectorAll(".lang-button").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.window === currentDashboardWindow);
+        });
+        await loadBusinessDashboardSnapshot();
+    });
 });
 elements.themeToggleButton.addEventListener("click", () => {
     setCurrentTheme(currentTheme === "dark" ? "light" : "dark");
