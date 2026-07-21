@@ -137,9 +137,11 @@ Main endpoints:
 - `GET /templates/outdated/count` (manager/developer)
 - `GET /templates/outdated/summary` (manager/developer)
 - `GET /templates/categories/tree`
+- `GET /templates/categories/{category_id}/breadcrumb`
 - `POST /templates/categories/nodes` (optional `parent_id`; omit for a root node)
 - `PUT /templates/categories/nodes/{node_id}`
 - `DELETE /templates/categories/nodes/{node_id}`
+- `POST /templates/admin/reset-database` (manager/developer; wipes templates + category nodes, reseeds the generic 25-root/5-channel tree with 130 templates per language — dev/test utility, no UI entry point)
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /auth/me`

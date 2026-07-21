@@ -188,9 +188,11 @@ There is also a small secret button hidden in the interface for curious users to
 **Category tree** (manager/developer; see OpenAPI for full query and role rules)
 
 - `GET /templates/categories/tree`
+- `GET /templates/categories/{category_id}/breadcrumb`
 - `POST /templates/categories/nodes` — optional `parent_id`; omit for a root node
 - `PUT /templates/categories/nodes/{node_id}`
 - `DELETE /templates/categories/nodes/{node_id}`
+- `POST /templates/admin/reset-database` (manager/developer; wipes templates/categories and reseeds a generic 25×5 category tree with 130 templates per language — dev/test utility, not exposed in the UI)
 
 **Auth and account endpoints**
 
